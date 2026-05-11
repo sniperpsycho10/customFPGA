@@ -20,26 +20,64 @@ class Routing:
                 print(source, "->", destination)
 
 
-    def route_signal(self, source, signal, luts, switchbox):
+    def route_signal(
+        self,
+        source,
+        signal,
+        fabric,
+        switchbox
+    ):
 
         destinations = self.routes[source]
 
+        # Find source LUT position
+        source_lut = source.replace("_OUT", "")
+
+        source_position = None
+
+        for position, lut_name in fabric.grid.items():
+
+            if lut_name == source_lut:
+                source_position = position
+
         for destination_lut_name, destination_index in destinations:
 
-            # Create route identifier
             route_name = source + "->" + destination_lut_name
 
-            # Check switch state
+            # Check switch enabled
             if switchbox.is_enabled(route_name):
 
-                # Get LUT object
-                destination_lut = luts[destination_lut_name]
+                # Check neighbor relationship
+                neighbors = fabric.get_neighbors(
+                    source_position[0],
+                    source_position[1]
+                )
 
-                # Inject signal
-                destination_lut.inputs[destination_index] = signal
+                if destination_lut_name in neighbors:
 
-                print("Signal Routed Through:", route_name)
+                    destination_lut = fabric.luts[
+                        destination_lut_name
+                    ]
+
+                    destination_lut.inputs[
+                        destination_index
+                    ] = signal
+
+                    print(
+                        "Neighbor Route Success:",
+                        route_name
+                    )
+
+                else:
+
+                    print(
+                        "Route Failed (Not Neighbor):",
+                        route_name
+                    )
 
             else:
 
-                print("Route Blocked:", route_name)
+                print(
+                    "Route Blocked:",
+                    route_name
+                )

@@ -2,6 +2,7 @@ from lut import LUT
 from routing import Routing
 from fabric import Fabric
 from switchbox import SwitchBox
+from signal_engine import SignalEngine
 
 
 # LUT memories
@@ -27,7 +28,7 @@ memory3 = [
 ]
 
 
-# Create LUT objects
+# Create LUTs
 lut1 = LUT("LUT1", memory1)
 lut2 = LUT("LUT2", memory2)
 lut3 = LUT("LUT3", memory3)
@@ -36,24 +37,23 @@ lut3 = LUT("LUT3", memory3)
 # Create FPGA fabric
 fabric = Fabric()
 
-fabric.add_lut(lut1)
-fabric.add_lut(lut2)
-fabric.add_lut(lut3)
+fabric.add_lut(lut1, 0, 0)
+fabric.add_lut(lut2, 0, 1)
+fabric.add_lut(lut3, 1, 0)
 
 
-# Display LUTs
-print("FPGA Fabric LUTs:")
-fabric.show_luts()
+# Show FPGA grid
+fabric.show_grid()
 
 
-# Create routing system
+# Create routing
 routing = Routing()
 
 routing.add_route("LUT1_OUT", ("LUT2", 0))
 routing.add_route("LUT1_OUT", ("LUT3", 2))
 
 
-# Display routes
+# Show routes
 print("\nRouting Table:")
 routing.show_routes()
 
@@ -61,28 +61,8 @@ routing.show_routes()
 # Create switchbox
 switchbox = SwitchBox()
 
-
-# Initial switch configuration
 switchbox.add_switch("LUT1_OUT->LUT2", True)
-switchbox.add_switch("LUT1_OUT->LUT3", False)
-
-
-# Show initial switches
-print("\nInitial Switch States:")
-switchbox.show_switches()
-
-
-# Toggle switches dynamically
-toggle_choice = input("\nToggle LUT1_OUT->LUT3 switch? (y/n): ")
-
-if toggle_choice.lower() == "y":
-
-    switchbox.toggle_switch("LUT1_OUT->LUT3")
-
-
-# Show updated switches
-print("\nUpdated Switch States:")
-switchbox.show_switches()
+switchbox.add_switch("LUT1_OUT->LUT3", True)
 
 
 # User inputs
@@ -96,7 +76,7 @@ d = int(input("Enter D: "))
 fabric.luts["LUT1"].set_inputs([a,b,c,d])
 
 
-# Initialize LUT2 and LUT3
+# Initialize LUT2/LUT3
 fabric.luts["LUT2"].set_inputs([0,1,0,1])
 fabric.luts["LUT3"].set_inputs([1,0,0,1])
 
@@ -111,7 +91,7 @@ print("\nLUT1 Output =", x)
 routing.route_signal(
     "LUT1_OUT",
     x,
-    fabric.luts,
+    fabric,
     switchbox
 )
 
@@ -126,3 +106,9 @@ print("LUT2 Output =", y)
 z = fabric.luts["LUT3"].compute()
 
 print("LUT3 Output =", z)
+
+
+# Visualize FPGA
+engine = SignalEngine()
+
+engine.draw_fpga(fabric, routing)
