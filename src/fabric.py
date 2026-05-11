@@ -7,54 +7,43 @@ class Fabric:
         self.grid = {}
 
 
-    def add_lut(self, lut, row, column):
+    def add_lut(
+        self,
+        lut,
+        layer,
+        row,
+        column
+    ):
 
         self.luts[lut.name] = lut
 
-        self.grid[(row, column)] = lut.name
+        self.grid[
+            (layer, row, column)
+        ] = lut.name
 
 
-    def show_luts(self):
+    def get_position(
+        self,
+        lut_name
+    ):
 
-        for lut_name in self.luts:
-            print(lut_name)
+        for position, name in self.grid.items():
+
+            if name == lut_name:
+
+                return position
+
+        return None
 
 
     def show_grid(self):
 
-        print("\nFPGA Grid Layout:\n")
+        print("\nFPGA Layered Grid:\n")
 
         for position, lut_name in self.grid.items():
 
-            print(position, "->", lut_name)
-
-
-    def get_neighbors(self, row, column):
-
-        neighbors = []
-
-        # Up
-        if (row - 1, column) in self.grid:
-            neighbors.append(
-                self.grid[(row - 1, column)]
+            print(
+                lut_name,
+                "->",
+                position
             )
-
-        # Down
-        if (row + 1, column) in self.grid:
-            neighbors.append(
-                self.grid[(row + 1, column)]
-            )
-
-        # Left
-        if (row, column - 1) in self.grid:
-            neighbors.append(
-                self.grid[(row, column - 1)]
-            )
-
-        # Right
-        if (row, column + 1) in self.grid:
-            neighbors.append(
-                self.grid[(row, column + 1)]
-            )
-
-        return neighbors

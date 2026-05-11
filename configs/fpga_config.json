@@ -5,22 +5,25 @@
 
         "LUT2": "AND",
 
-        "LUT3": "OR"
+        "LUT3": "OR",
+
+        "LUT4": "XOR",
+
+        "LUT5": "AND",
+
+        "LUT6": "OR"
     },
-
-
-    "ROUTES": [
-
-        ["LUT1_OUT", "LUT2", 0],
-
-        ["LUT1_OUT", "LUT3", 2]
-    ],
-
 
     "SWITCHES": {
 
         "LUT1_OUT->LUT2": true,
 
-        "LUT1_OUT->LUT3": true
+        "LUT1_OUT->LUT3": true,
+
+        "LUT1_OUT->LUT4": true,
+
+        "LUT1_OUT->LUT5": true,
+
+        "LUT1_OUT->LUT6": true
     }
 }

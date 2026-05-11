@@ -24,115 +24,52 @@ class SignalEngine:
         self.ax.clear()
 
         self.ax.set_title(
-            "Advanced FPGA Visualization"
+            "Advanced FPGA Architecture"
         )
 
         self.ax.axis("off")
 
 
-    def add_signal_event(
+    # -------------------------
+    # ROUTE COLOR BY CONGESTION
+    # -------------------------
+    def get_route_color(
         self,
-        source,
-        signal
+        usage,
+        max_capacity,
+        active=False,
+        blocked=False
     ):
 
-        self.signal_queue.append(
-            (source, signal)
-        )
+        if blocked:
+
+            return "red"
 
 
-    def draw_lut(
-        self,
-        x,
-        y,
-        lut_name,
-        lut_color,
-        size,
-        label
-    ):
+        if active:
 
-        # --------------------
-        # 3D MODE
-        # --------------------
-        if self.visual_mode == "3D":
+            return "lime"
 
-            # Shadow layer
-            self.ax.scatter(
-                x + 0.05,
-                y - 0.05,
-                s=size,
-                color="black",
-                alpha=0.3
-            )
 
-            # Main LUT
-            self.ax.scatter(
-                x,
-                y,
-                s=size,
-                color=lut_color,
-                edgecolors="black"
-            )
+        utilization = usage / max_capacity
 
-        # --------------------
-        # 2D MODE
-        # --------------------
+
+        if utilization < 0.33:
+
+            return "gray"
+
+        elif utilization < 0.66:
+
+            return "orange"
+
         else:
 
-            self.ax.scatter(
-                x,
-                y,
-                s=size,
-                color=lut_color,
-                edgecolors="black"
-            )
+            return "magenta"
 
 
-        self.ax.text(
-            x,
-            y,
-            label,
-            ha='center',
-            va='center',
-            fontsize=9,
-            fontweight='bold'
-        )
-
-
-    def draw_route(
-        self,
-        x1,
-        y1,
-        x2,
-        y2,
-        color,
-        width
-    ):
-
-        # --------------------
-        # 3D ROUTING
-        # --------------------
-        if self.visual_mode == "3D":
-
-            # Shadow route
-            self.ax.plot(
-                [x1 + 0.03, x2 + 0.03],
-                [y1 - 0.03, y2 - 0.03],
-                color="black",
-                alpha=0.2,
-                linewidth=width + 1
-            )
-
-
-        # Main route
-        self.ax.plot(
-            [x1, x2],
-            [y1, y2],
-            color=color,
-            linewidth=width
-        )
-
-
+    # -------------------------
+    # DRAW FPGA
+    # -------------------------
     def draw_fpga(
         self,
         fabric,
@@ -146,11 +83,20 @@ class SignalEngine:
         self.clear_canvas()
 
 
-        # --------------------
+        # -------------------------
         # DRAW LUTS
-        # --------------------
-        for (row, column), lut_name in fabric.grid.items():
+        # -------------------------
+        for (
+            layer,
+            row,
+            column
+        ), lut_name in fabric.grid.items():
 
+            x = column + (layer * 0.3)
+            y = -row + (layer * 0.3)
+
+
+            # Active LUT
             if lut_name == active_lut:
 
                 lut_color = "yellow"
@@ -160,6 +106,26 @@ class SignalEngine:
 
                 lut_color = "skyblue"
                 size = 3000
+
+
+            # Shadow
+            self.ax.scatter(
+                x + 0.05,
+                y - 0.05,
+                s=size,
+                color="black",
+                alpha=0.25
+            )
+
+
+            # Main LUT
+            self.ax.scatter(
+                x,
+                y,
+                s=size,
+                color=lut_color,
+                edgecolors="black"
+            )
 
 
             # Labels
@@ -172,7 +138,8 @@ class SignalEngine:
                     lut_name +
                     "\n(" +
                     lut_labels[lut_name] +
-                    ")"
+                    ")\nL" +
+                    str(layer)
                 )
 
             else:
@@ -180,19 +147,20 @@ class SignalEngine:
                 display_text = lut_name
 
 
-            self.draw_lut(
-                column,
-                -row,
-                lut_name,
-                lut_color,
-                size,
-                display_text
+            self.ax.text(
+                x,
+                y,
+                display_text,
+                ha='center',
+                va='center',
+                fontsize=8,
+                fontweight='bold'
             )
 
 
-        # --------------------
+        # -------------------------
         # DRAW ROUTES
-        # --------------------
+        # -------------------------
         for source, destinations in routing.routes.items():
 
             source_lut = source.replace(
@@ -200,26 +168,16 @@ class SignalEngine:
                 ""
             )
 
-            source_position = None
-
-
-            for position, lut_name in fabric.grid.items():
-
-                if lut_name == source_lut:
-
-                    source_position = position
+            source_position = fabric.get_position(
+                source_lut
+            )
 
 
             for destination_lut, _ in destinations:
 
-                destination_position = None
-
-
-                for position, lut_name in fabric.grid.items():
-
-                    if lut_name == destination_lut:
-
-                        destination_position = position
+                destination_position = fabric.get_position(
+                    destination_lut
+                )
 
 
                 if (
@@ -227,60 +185,105 @@ class SignalEngine:
                     destination_position
                 ):
 
-                    x1 = source_position[1]
-                    y1 = -source_position[0]
+                    s_layer, s_row, s_col = source_position
 
-                    x2 = destination_position[1]
-                    y2 = -destination_position[0]
+                    d_layer, d_row, d_col = destination_position
+
+
+                    x1 = s_col + (s_layer * 0.3)
+                    y1 = -s_row + (s_layer * 0.3)
+
+                    x2 = d_col + (d_layer * 0.3)
+                    y2 = -d_row + (d_layer * 0.3)
 
 
                     route_name = (
+                        source_lut +
+                        "->" +
+                        destination_lut
+                    )
+
+
+                    usage = routing.congestion[
+                        route_name
+                    ]
+
+
+                    blocked = not switchbox.is_enabled(
                         source +
                         "->" +
                         destination_lut
                     )
 
 
-                    # Active route
-                    if (
+                    active = (
                         active_routes and
-                        route_name in active_routes
-                    ):
-
-                        route_color = "lime"
-                        line_width = 4
-
-
-                    # Disabled route
-                    elif not switchbox.is_enabled(
-                        route_name
-                    ):
-
-                        route_color = "red"
-                        line_width = 2
-
-
-                    # Idle route
-                    else:
-
-                        route_color = "gray"
-                        line_width = 2
-
-
-                    self.draw_route(
-                        x1,
-                        y1,
-                        x2,
-                        y2,
-                        route_color,
-                        line_width
+                        (
+                            source +
+                            "->" +
+                            destination_lut
+                        ) in active_routes
                     )
+
+
+                    route_color = self.get_route_color(
+                        usage,
+                        routing.max_capacity,
+                        active,
+                        blocked
+                    )
+
+
+                    line_width = 2 + usage
+
+
+                    # Route shadow
+                    self.ax.plot(
+                        [x1 + 0.03, x2 + 0.03],
+                        [y1 - 0.03, y2 - 0.03],
+                        color="black",
+                        alpha=0.2,
+                        linewidth=line_width + 1
+                    )
+
+
+                    # Main route
+                    self.ax.plot(
+                        [x1, x2],
+                        [y1, y2],
+                        color=route_color,
+                        linewidth=line_width
+                    )
+
+
+                    # Via visualization
+                    if s_layer != d_layer:
+
+                        via_x = (
+                            x1 + x2
+                        ) / 2
+
+                        via_y = (
+                            y1 + y2
+                        ) / 2
+
+
+                        self.ax.scatter(
+                            via_x,
+                            via_y,
+                            s=500,
+                            color="orange",
+                            edgecolors="black"
+                        )
 
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
 
+    # -------------------------
+    # ANIMATE SIGNAL
+    # -------------------------
     def animate_signal(
         self,
         fabric,
@@ -291,26 +294,25 @@ class SignalEngine:
         lut_labels=None
     ):
 
-        source_position = None
-        destination_position = None
+        source_position = fabric.get_position(
+            source_lut
+        )
+
+        destination_position = fabric.get_position(
+            destination_lut
+        )
 
 
-        for position, lut_name in fabric.grid.items():
+        s_layer, s_row, s_col = source_position
 
-            if lut_name == source_lut:
-
-                source_position = position
-
-            if lut_name == destination_lut:
-
-                destination_position = position
+        d_layer, d_row, d_col = destination_position
 
 
-        x1 = source_position[1]
-        y1 = -source_position[0]
+        x1 = s_col + (s_layer * 0.3)
+        y1 = -s_row + (s_layer * 0.3)
 
-        x2 = destination_position[1]
-        y2 = -destination_position[0]
+        x2 = d_col + (d_layer * 0.3)
+        y2 = -d_row + (d_layer * 0.3)
 
 
         steps = 50
@@ -350,6 +352,9 @@ class SignalEngine:
             plt.pause(0.02)
 
 
+    # -------------------------
+    # LUT ACTIVATION
+    # -------------------------
     def animate_lut_activation(
         self,
         fabric,
@@ -381,6 +386,9 @@ class SignalEngine:
             plt.pause(0.08)
 
 
+    # -------------------------
+    # RUN CYCLE
+    # -------------------------
     def run_cycle(
         self,
         cycle_number

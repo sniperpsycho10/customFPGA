@@ -11,7 +11,8 @@ This project recreates internal FPGA architecture concepts including:
 - Signal propagation engine
 - Runtime FPGA reconfiguration
 - Interactive FPGA visualization
-- Pseudo-3D FPGA rendering
+- Layered FPGA architecture
+- Intelligent FPGA routing
 
 The goal of this project is to deeply understand how FPGA hardware works internally.
 
@@ -30,7 +31,8 @@ The project models:
 - Propagation timing
 - Runtime FPGA programming
 - Signal visualization
-- Interactive FPGA rendering
+- Intelligent routing systems
+- Layered FPGA architecture
 
 ---
 
@@ -48,12 +50,6 @@ Implemented:
 - Multi-LUT signal flow
 - Inter-LUT communication
 
-### Features
-
-- Reusable LUT blocks
-- Dynamic LUT inputs/outputs
-- Modular logic-cell architecture
-
 ---
 
 # Phase 2 — Routing Architecture ✅
@@ -66,13 +62,6 @@ Implemented:
 - Multi-destination routing
 - FPGA fabric manager
 
-### Features
-
-- Dynamic routing
-- Fanout architecture
-- Scalable FPGA fabric
-- Automatic signal movement
-
 ---
 
 # Phase 3 — Switch Box Architecture ✅
@@ -83,12 +72,6 @@ Implemented:
 - Runtime route enable/disable
 - Dynamic reconfiguration
 - Selective fanout control
-
-### Features
-
-- SwitchBox class
-- Runtime routing control
-- Programmable interconnect switching
 
 ---
 
@@ -101,14 +84,6 @@ Implemented:
 - Neighbor-aware architecture
 - Grid-based routing
 - FPGA visualization
-
-### Features
-
-- Spatial LUT organization
-- Physical FPGA coordinates
-- Neighbor detection
-- Topology-aware routing
-- Matplotlib FPGA visualization
 
 ---
 
@@ -123,15 +98,6 @@ Implemented:
 - Animated signal movement
 - LUT activation animation
 
-### Features
-
-- Propagation timing engine
-- Cycle-based FPGA execution
-- Live signal animation
-- Route traversal visualization
-- Dynamic LUT activation
-- Real-time FPGA updates
-
 ---
 
 # Phase 6 — FPGA Configuration System ✅
@@ -145,22 +111,13 @@ Implemented:
 - Runtime LUT programming
 - Configurable FPGA architecture
 
-### Supported Configuration Modes
+### Supported LUT Configuration Modes
 
 | Mode | Example |
 |---|---|
 | Logic abstraction | XOR |
 | Raw LUT memory | 0,1,1,0 |
 | Random LUT generation | RANDOM |
-
-### Features
-
-- JSON FPGA config loader
-- Runtime FPGA logic updates
-- Dynamic LUT memory replacement
-- Live FPGA reprogramming
-- Visual FPGA logic labels
-- Automatic LUT synthesis behavior
 
 ---
 
@@ -186,39 +143,47 @@ Implemented:
 | Runtime reconfiguration visualization | ✅ |
 | Interactive rendering | ✅ |
 | Pseudo-3D FPGA rendering | ✅ |
-| FPGA logic labels | ✅ |
-
-### Supported Visualization Modes
-
-| Mode | Description |
-|---|---|
-| 2D | Standard FPGA topology |
-| 3D | Pseudo-3D FPGA rendering |
 
 ---
 
-# Project Structure
+# Phase 8 — Advanced FPGA Architecture ✅
+
+Implemented:
+
+- Layered FPGA topology
+- 3D FPGA coordinate system
+- Vertical routing visualization
+- Inter-layer vias
+- Graph-based routing
+- BFS pathfinding
+- Intelligent auto-routing
+- Routing congestion tracking
+- Multi-node FPGA topology
+- Expanded FPGA visualization
+
+### FPGA Architecture Features
+
+| Feature | Status |
+|---|---|
+| Layered FPGA architecture | ✅ |
+| 3D FPGA coordinates | ✅ |
+| Inter-layer routing | ✅ |
+| Vertical vias | ✅ |
+| Routing graph | ✅ |
+| BFS routing | ✅ |
+| Congestion tracking | ✅ |
+| Multi-hop path discovery | ✅ |
+
+---
+
+# Example FPGA Layered Topology
 
 ```text
-CustomFPGA/
-│
-├── assets/
-│
-├── configs/
-│   └── fpga_config.json
-│
-├── docs/
-├── fpga_env/
-│
-├── src/
-│   ├── configurator.py
-│   ├── fabric.py
-│   ├── lut.py
-│   ├── main.py
-│   ├── routing.py
-│   ├── signal_engine.py
-│   └── switchbox.py
-│
-├── tests/
-├── README.md
-└── requirements.txt
+Layer 0:
+LUT1 ---- LUT4
+
+Layer 1:
+LUT2 ---- LUT5
+
+Layer 2:
+LUT3 ---- LUT6

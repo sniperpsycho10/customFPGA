@@ -6,17 +6,21 @@ from signal_engine import SignalEngine
 from configurator import Configurator
 
 
-# Create configurator
+# -------------------------
+# CONFIGURATION
+# -------------------------
+
 configurator = Configurator()
 
-
-# Load FPGA config
 config = configurator.load_fpga_config(
     "../configs/fpga_config.json"
 )
 
 
-# Generate LUT memories
+# -------------------------
+# LUT MEMORIES
+# -------------------------
+
 memory1 = configurator.generate_memory(
     config["LUTS"]["LUT1"]
 )
@@ -29,48 +33,183 @@ memory3 = configurator.generate_memory(
     config["LUTS"]["LUT3"]
 )
 
+memory4 = configurator.generate_memory(
+    config["LUTS"]["LUT4"]
+)
 
-# Display memories
+memory5 = configurator.generate_memory(
+    config["LUTS"]["LUT5"]
+)
+
+memory6 = configurator.generate_memory(
+    config["LUTS"]["LUT6"]
+)
+
+
 print("\nGenerated LUT Memories:\n")
 
 print("LUT1 =", memory1)
 print("LUT2 =", memory2)
 print("LUT3 =", memory3)
+print("LUT4 =", memory4)
+print("LUT5 =", memory5)
+print("LUT6 =", memory6)
 
 
-# Create LUTs
+# -------------------------
+# CREATE LUTS
+# -------------------------
+
 lut1 = LUT("LUT1", memory1)
 lut2 = LUT("LUT2", memory2)
 lut3 = LUT("LUT3", memory3)
+lut4 = LUT("LUT4", memory4)
+lut5 = LUT("LUT5", memory5)
+lut6 = LUT("LUT6", memory6)
 
 
-# Create FPGA fabric
+# -------------------------
+# CREATE FABRIC
+# -------------------------
+
 fabric = Fabric()
 
-fabric.add_lut(lut1, 0, 0)
-fabric.add_lut(lut2, 0, 1)
-fabric.add_lut(lut3, 1, 0)
+
+# -------------------------
+# LAYERED FPGA PLACEMENT
+# -------------------------
+
+fabric.add_lut(
+    lut1,
+    0,
+    0,
+    0
+)
+
+fabric.add_lut(
+    lut2,
+    1,
+    0,
+    1
+)
+
+fabric.add_lut(
+    lut3,
+    2,
+    1,
+    0
+)
+
+fabric.add_lut(
+    lut4,
+    0,
+    1,
+    1
+)
+
+fabric.add_lut(
+    lut5,
+    1,
+    1,
+    2
+)
+
+fabric.add_lut(
+    lut6,
+    2,
+    2,
+    1
+)
 
 
-# Create routing
+fabric.show_grid()
+
+
+# -------------------------
+# CREATE ROUTING
+# -------------------------
+
 routing = Routing()
 
-for route in config["ROUTES"]:
 
-    source = route[0]
-    destination_lut = route[1]
-    destination_index = route[2]
+# FPGA Routing Graph
+routing.add_connection(
+    "LUT1",
+    "LUT2"
+)
 
-    routing.add_route(
-        source,
-        (
-            destination_lut,
-            destination_index
-        )
-    )
+routing.add_connection(
+    "LUT1",
+    "LUT3"
+)
+
+routing.add_connection(
+    "LUT2",
+    "LUT3"
+)
+
+routing.add_connection(
+    "LUT3",
+    "LUT4"
+)
+
+routing.add_connection(
+    "LUT4",
+    "LUT5"
+)
+
+routing.add_connection(
+    "LUT5",
+    "LUT6"
+)
 
 
-# Create switchbox
+routing.show_graph()
+
+
+# -------------------------
+# AUTO ROUTING
+# -------------------------
+
+routing.auto_route(
+    "LUT1",
+    "LUT2"
+)
+
+routing.auto_route(
+    "LUT1",
+    "LUT3"
+)
+
+routing.auto_route(
+    "LUT1",
+    "LUT4"
+)
+
+routing.auto_route(
+    "LUT1",
+    "LUT5"
+)
+
+routing.auto_route(
+    "LUT3",
+    "LUT4"
+)
+
+routing.auto_route(
+    "LUT4",
+    "LUT5"
+)
+
+routing.auto_route(
+    "LUT5",
+    "LUT6"
+)
+
+# -------------------------
+# SWITCHBOX
+# -------------------------
+
 switchbox = SwitchBox()
 
 for switch_name, switch_state in config[
@@ -83,31 +222,49 @@ for switch_name, switch_state in config[
     )
 
 
-# Create advanced signal engine
+# -------------------------
+# SIGNAL ENGINE
+# -------------------------
+
 engine = SignalEngine(
     visual_mode="3D"
 )
 
 
-# FPGA labels
+# -------------------------
+# LABELS
+# -------------------------
+
 lut_labels = {
 
     "LUT1": config["LUTS"]["LUT1"],
 
     "LUT2": config["LUTS"]["LUT2"],
 
-    "LUT3": config["LUTS"]["LUT3"]
+    "LUT3": config["LUTS"]["LUT3"],
+
+    "LUT4": config["LUTS"]["LUT4"],
+
+    "LUT5": config["LUTS"]["LUT5"],
+
+    "LUT6": config["LUTS"]["LUT6"]
 }
 
 
-# FPGA inputs
+# -------------------------
+# INPUTS
+# -------------------------
+
 a = int(input("\nEnter A: "))
 b = int(input("Enter B: "))
 c = int(input("Enter C: "))
 d = int(input("Enter D: "))
 
 
-# Initialize LUTs
+# -------------------------
+# INITIALIZE LUTS
+# -------------------------
+
 fabric.luts["LUT1"].set_inputs(
     [a,b,c,d]
 )
@@ -120,15 +277,31 @@ fabric.luts["LUT3"].set_inputs(
     [1,0,0,1]
 )
 
+fabric.luts["LUT4"].set_inputs(
+    [0,0,0,0]
+)
 
-# -------------------
-# Cycle 1
-# -------------------
+fabric.luts["LUT5"].set_inputs(
+    [0,0,0,0]
+)
+
+fabric.luts["LUT6"].set_inputs(
+    [0,0,0,0]
+)
+
+
+# -------------------------
+# CYCLE 1
+# -------------------------
+
+routing.reset_congestion()
+
 engine.run_cycle(1)
 
 x = fabric.luts["LUT1"].compute()
 
 print("LUT1 Output =", x)
+
 
 engine.draw_fpga(
     fabric,
@@ -139,15 +312,16 @@ engine.draw_fpga(
 )
 
 
-# -------------------
-# Cycle 2
-# -------------------
+# -------------------------
+# CYCLE 2
+# -------------------------
+
 engine.run_cycle(2)
 
 print("Signal Propagation Started")
 
 
-# Animate signal movement
+# Animate signals
 engine.animate_signal(
     fabric,
     routing,
@@ -166,13 +340,45 @@ engine.animate_signal(
     lut_labels
 )
 
+engine.animate_signal(
+    fabric,
+    routing,
+    switchbox,
+    "LUT3",
+    "LUT4",
+    lut_labels
+)
 
-# Route activation list
+engine.animate_signal(
+    fabric,
+    routing,
+    switchbox,
+    "LUT4",
+    "LUT5",
+    lut_labels
+)
+
+engine.animate_signal(
+    fabric,
+    routing,
+    switchbox,
+    "LUT5",
+    "LUT6",
+    lut_labels
+)
+
+
 active_routes = [
 
     "LUT1_OUT->LUT2",
 
-    "LUT1_OUT->LUT3"
+    "LUT1_OUT->LUT3",
+
+    "LUT1_OUT->LUT4",
+
+    "LUT1_OUT->LUT5",
+
+    "LUT1_OUT->LUT6"
 ]
 
 
@@ -185,7 +391,6 @@ routing.route_signal(
 )
 
 
-# Draw active routes
 engine.draw_fpga(
     fabric,
     routing,
@@ -195,13 +400,16 @@ engine.draw_fpga(
 )
 
 
-# -------------------
-# Cycle 3
-# -------------------
+routing.show_congestion()
+
+
+# -------------------------
+# CYCLE 3
+# -------------------------
+
 engine.run_cycle(3)
 
 
-# Animate LUT activation
 engine.animate_lut_activation(
     fabric,
     routing,
@@ -218,18 +426,47 @@ engine.animate_lut_activation(
     lut_labels
 )
 
+engine.animate_lut_activation(
+    fabric,
+    routing,
+    switchbox,
+    "LUT4",
+    lut_labels
+)
+
+engine.animate_lut_activation(
+    fabric,
+    routing,
+    switchbox,
+    "LUT5",
+    lut_labels
+)
+
+engine.animate_lut_activation(
+    fabric,
+    routing,
+    switchbox,
+    "LUT6",
+    lut_labels
+)
+
 
 # Compute outputs
 y = fabric.luts["LUT2"].compute()
-
-print("LUT2 Output =", y)
-
 z = fabric.luts["LUT3"].compute()
 
+u = fabric.luts["LUT4"].compute()
+v = fabric.luts["LUT5"].compute()
+w = fabric.luts["LUT6"].compute()
+
+
+print("LUT2 Output =", y)
 print("LUT3 Output =", z)
+print("LUT4 Output =", u)
+print("LUT5 Output =", v)
+print("LUT6 Output =", w)
 
 
-# Draw FPGA state
 engine.draw_fpga(
     fabric,
     routing,
@@ -239,9 +476,10 @@ engine.draw_fpga(
 )
 
 
-# -------------------
-# Cycle 4
-# -------------------
+# -------------------------
+# CYCLE 4
+# -------------------------
+
 engine.run_cycle(4)
 
 print("\n=== Runtime FPGA Reconfiguration ===")
@@ -249,21 +487,16 @@ print("\n=== Runtime FPGA Reconfiguration ===")
 print("Reprogramming LUT2 to OR")
 
 
-# Generate new LUT memory
 new_memory = configurator.generate_memory(
     "OR"
 )
 
 
-# Reconfigure LUT2
 fabric.luts["LUT2"].memory = new_memory
 
-
-# Update displayed label
 lut_labels["LUT2"] = "OR"
 
 
-# Animate reconfiguration
 engine.animate_lut_activation(
     fabric,
     routing,
@@ -273,13 +506,11 @@ engine.animate_lut_activation(
 )
 
 
-# Recompute LUT2
 new_output = fabric.luts["LUT2"].compute()
 
 print("Reconfigured LUT2 Output =", new_output)
 
 
-# Final FPGA draw
 engine.draw_fpga(
     fabric,
     routing,
@@ -287,6 +518,9 @@ engine.draw_fpga(
     lut_labels,
     active_lut="LUT2"
 )
+
+
+routing.show_congestion()
 
 
 input("\nPress Enter to close visualization...")
