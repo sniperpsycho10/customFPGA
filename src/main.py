@@ -4,6 +4,8 @@ from fabric import Fabric
 from switchbox import SwitchBox
 from signal_engine import SignalEngine
 
+import matplotlib.pyplot as plt
+
 
 # LUT memories
 memory1 = [
@@ -42,49 +44,99 @@ fabric.add_lut(lut2, 0, 1)
 fabric.add_lut(lut3, 1, 0)
 
 
-# Show FPGA grid
-fabric.show_grid()
-
-
 # Create routing
 routing = Routing()
 
-routing.add_route("LUT1_OUT", ("LUT2", 0))
-routing.add_route("LUT1_OUT", ("LUT3", 2))
+routing.add_route(
+    "LUT1_OUT",
+    ("LUT2", 0)
+)
 
-
-# Show routes
-print("\nRouting Table:")
-routing.show_routes()
+routing.add_route(
+    "LUT1_OUT",
+    ("LUT3", 2)
+)
 
 
 # Create switchbox
 switchbox = SwitchBox()
 
-switchbox.add_switch("LUT1_OUT->LUT2", True)
-switchbox.add_switch("LUT1_OUT->LUT3", True)
+switchbox.add_switch(
+    "LUT1_OUT->LUT2",
+    True
+)
+
+switchbox.add_switch(
+    "LUT1_OUT->LUT3",
+    True
+)
+
+
+# Create signal engine
+engine = SignalEngine()
+
+
+# Enable interactive plotting
+plt.ion()
 
 
 # User inputs
-a = int(input("\nEnter A: "))
+a = int(input("Enter A: "))
 b = int(input("Enter B: "))
 c = int(input("Enter C: "))
 d = int(input("Enter D: "))
 
 
-# Set LUT1 inputs
-fabric.luts["LUT1"].set_inputs([a,b,c,d])
+# Initialize LUTs
+fabric.luts["LUT1"].set_inputs(
+    [a,b,c,d]
+)
+
+fabric.luts["LUT2"].set_inputs(
+    [0,1,0,1]
+)
+
+fabric.luts["LUT3"].set_inputs(
+    [1,0,0,1]
+)
 
 
-# Initialize LUT2/LUT3
-fabric.luts["LUT2"].set_inputs([0,1,0,1])
-fabric.luts["LUT3"].set_inputs([1,0,0,1])
+# -------------------
+# Cycle 1
+# -------------------
+engine.run_cycle(1)
 
-
-# Compute LUT1
 x = fabric.luts["LUT1"].compute()
 
-print("\nLUT1 Output =", x)
+print("LUT1 Output =", x)
+
+engine.draw_fpga(fabric)
+
+plt.pause(1)
+
+
+# -------------------
+# Cycle 2
+# -------------------
+engine.run_cycle(2)
+
+print("Signal Propagation Started")
+
+
+# Animate signal to LUT2
+engine.animate_signal(
+    fabric,
+    "LUT1",
+    "LUT2"
+)
+
+
+# Animate signal to LUT3
+engine.animate_signal(
+    fabric,
+    "LUT1",
+    "LUT3"
+)
 
 
 # Route signals
@@ -96,19 +148,40 @@ routing.route_signal(
 )
 
 
-# Compute LUT2
+# -------------------
+# Cycle 3
+# -------------------
+engine.run_cycle(3)
+
+
+# Animate LUT2 activation
+engine.animate_lut_activation(
+    fabric,
+    "LUT2"
+)
+
+
+# Animate LUT3 activation
+engine.animate_lut_activation(
+    fabric,
+    "LUT3"
+)
+
+
+# Compute outputs
 y = fabric.luts["LUT2"].compute()
 
 print("LUT2 Output =", y)
 
-
-# Compute LUT3
 z = fabric.luts["LUT3"].compute()
 
 print("LUT3 Output =", z)
 
 
-# Visualize FPGA
-engine = SignalEngine()
+# Final FPGA view
+engine.draw_fpga(fabric)
 
-engine.draw_fpga(fabric, routing)
+
+plt.ioff()
+
+plt.show()

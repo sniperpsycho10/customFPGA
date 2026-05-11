@@ -30,7 +30,8 @@ class Routing:
 
         destinations = self.routes[source]
 
-        # Find source LUT position
+        active_routes = []
+
         source_lut = source.replace("_OUT", "")
 
         source_position = None
@@ -44,10 +45,8 @@ class Routing:
 
             route_name = source + "->" + destination_lut_name
 
-            # Check switch enabled
             if switchbox.is_enabled(route_name):
 
-                # Check neighbor relationship
                 neighbors = fabric.get_neighbors(
                     source_position[0],
                     source_position[1]
@@ -63,15 +62,17 @@ class Routing:
                         destination_index
                     ] = signal
 
+                    active_routes.append(route_name)
+
                     print(
-                        "Neighbor Route Success:",
+                        "Signal Arrived:",
                         route_name
                     )
 
                 else:
 
                     print(
-                        "Route Failed (Not Neighbor):",
+                        "Route Failed:",
                         route_name
                     )
 
@@ -81,3 +82,5 @@ class Routing:
                     "Route Blocked:",
                     route_name
                 )
+
+        return active_routes
