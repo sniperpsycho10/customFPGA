@@ -1,0 +1,26 @@
+{
+    "LUTS": {
+
+        "LUT1": "XOR",
+
+        "LUT2": "AND",
+
+        "LUT3": "OR"
+    },
+
+
+    "ROUTES": [
+
+        ["LUT1_OUT", "LUT2", 0],
+
+        ["LUT1_OUT", "LUT3", 2]
+    ],
+
+
+    "SWITCHES": {
+
+        "LUT1_OUT->LUT2": true,
+
+        "LUT1_OUT->LUT3": true
+    }
+}

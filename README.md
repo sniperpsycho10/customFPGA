@@ -11,6 +11,7 @@ This project recreates the internal architecture of an FPGA including:
 - Signal propagation engine
 - Animated signal visualization
 - Runtime FPGA reconfiguration
+- JSON FPGA configuration loading
 
 The goal of this project is to deeply understand how real FPGA hardware works internally.
 
@@ -29,6 +30,7 @@ The project models:
 - Propagation timing
 - Hardware-style execution cycles
 - Signal movement visualization
+- FPGA runtime configuration
 
 ---
 
@@ -98,7 +100,7 @@ Implemented:
 - LUT physical placement
 - Neighbor-aware architecture
 - Grid-based routing
-- Basic FPGA visualization
+- FPGA visualization
 
 ### Features
 
@@ -132,6 +134,36 @@ Implemented:
 
 ---
 
+# Phase 6 — FPGA Configuration System ✅
+
+Implemented:
+
+- Logic abstraction layer
+- Runtime FPGA reconfiguration
+- JSON FPGA configuration files
+- Automatic LUT memory generation
+- Runtime LUT programming
+- Configurable FPGA architecture
+
+### Supported Configuration Modes
+
+| Mode | Example |
+|---|---|
+| Logic abstraction | XOR |
+| Raw LUT memory | 0,1,1,0 |
+| Random LUT generation | RANDOM |
+
+### Features
+
+- JSON FPGA config loader
+- Runtime FPGA logic updates
+- Dynamic LUT memory replacement
+- Live FPGA reprogramming
+- Visual FPGA logic labels
+- Automatic LUT synthesis behavior
+
+---
+
 # Project Structure
 
 ```text
@@ -139,9 +171,13 @@ CustomFPGA/
 │
 ├── assets/
 ├── configs/
+│   └── fpga_config.json
+│
 ├── docs/
 ├── fpga_env/
+│
 ├── src/
+│   ├── configurator.py
 │   ├── fabric.py
 │   ├── lut.py
 │   ├── main.py

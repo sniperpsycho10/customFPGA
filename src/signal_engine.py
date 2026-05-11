@@ -50,7 +50,8 @@ class SignalEngine:
         self,
         fabric,
         source_lut,
-        destination_lut
+        destination_lut,
+        lut_labels=None
     ):
 
         plt.clf()
@@ -68,10 +69,25 @@ class SignalEngine:
                 s=3000
             )
 
+            # Display labels
+            if lut_labels and lut_name in lut_labels:
+
+                display_text = (
+                    lut_name +
+                    "\n(" +
+                    lut_labels[lut_name] +
+                    ")"
+                )
+
+            else:
+
+                display_text = lut_name
+
+
             ax.text(
                 column,
                 -row,
-                lut_name,
+                display_text,
                 ha='center',
                 va='center',
                 fontsize=10
@@ -132,7 +148,8 @@ class SignalEngine:
     def animate_lut_activation(
         self,
         fabric,
-        active_lut
+        active_lut,
+        lut_labels=None
     ):
 
         plt.clf()
@@ -141,7 +158,6 @@ class SignalEngine:
         ax = fig.gca()
 
 
-        # Pulse animation
         pulse_sizes = [
             3000,
             4500,
@@ -175,10 +191,26 @@ class SignalEngine:
                         s=3000
                     )
 
+
+                # Display labels
+                if lut_labels and lut_name in lut_labels:
+
+                    display_text = (
+                        lut_name +
+                        "\n(" +
+                        lut_labels[lut_name] +
+                        ")"
+                    )
+
+                else:
+
+                    display_text = lut_name
+
+
                 ax.text(
                     column,
                     -row,
-                    lut_name,
+                    display_text,
                     ha='center',
                     va='center',
                     fontsize=10
@@ -193,7 +225,8 @@ class SignalEngine:
 
     def draw_fpga(
         self,
-        fabric
+        fabric,
+        lut_labels=None
     ):
 
         plt.clf()
@@ -210,17 +243,33 @@ class SignalEngine:
                 s=3000
             )
 
+
+            # Display logic labels
+            if lut_labels and lut_name in lut_labels:
+
+                display_text = (
+                    lut_name +
+                    "\n(" +
+                    lut_labels[lut_name] +
+                    ")"
+                )
+
+            else:
+
+                display_text = lut_name
+
+
             ax.text(
                 column,
                 -row,
-                lut_name,
+                display_text,
                 ha='center',
                 va='center',
                 fontsize=10
             )
 
         ax.set_title(
-            "FPGA Grid"
+            "FPGA Configuration Visualization"
         )
 
         plt.draw()
