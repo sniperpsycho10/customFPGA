@@ -5,8 +5,6 @@ from switchbox import SwitchBox
 from signal_engine import SignalEngine
 from configurator import Configurator
 
-import matplotlib.pyplot as plt
-
 
 # Create configurator
 configurator = Configurator()
@@ -85,11 +83,13 @@ for switch_name, switch_state in config[
     )
 
 
-# Create signal engine
-engine = SignalEngine()
+# Create advanced signal engine
+engine = SignalEngine(
+    visual_mode="3D"
+)
 
 
-# FPGA logic labels
+# FPGA labels
 lut_labels = {
 
     "LUT1": config["LUTS"]["LUT1"],
@@ -98,10 +98,6 @@ lut_labels = {
 
     "LUT3": config["LUTS"]["LUT3"]
 }
-
-
-# Enable plotting
-plt.ion()
 
 
 # FPGA inputs
@@ -136,10 +132,11 @@ print("LUT1 Output =", x)
 
 engine.draw_fpga(
     fabric,
-    lut_labels
+    routing,
+    switchbox,
+    lut_labels,
+    active_lut="LUT1"
 )
-
-plt.pause(1)
 
 
 # -------------------
@@ -150,9 +147,11 @@ engine.run_cycle(2)
 print("Signal Propagation Started")
 
 
-# Animate signals
+# Animate signal movement
 engine.animate_signal(
     fabric,
+    routing,
+    switchbox,
     "LUT1",
     "LUT2",
     lut_labels
@@ -160,10 +159,21 @@ engine.animate_signal(
 
 engine.animate_signal(
     fabric,
+    routing,
+    switchbox,
     "LUT1",
     "LUT3",
     lut_labels
 )
+
+
+# Route activation list
+active_routes = [
+
+    "LUT1_OUT->LUT2",
+
+    "LUT1_OUT->LUT3"
+]
 
 
 # Route signals
@@ -175,21 +185,35 @@ routing.route_signal(
 )
 
 
+# Draw active routes
+engine.draw_fpga(
+    fabric,
+    routing,
+    switchbox,
+    lut_labels,
+    active_routes=active_routes
+)
+
+
 # -------------------
 # Cycle 3
 # -------------------
 engine.run_cycle(3)
 
 
-# Animate activations
+# Animate LUT activation
 engine.animate_lut_activation(
     fabric,
+    routing,
+    switchbox,
     "LUT2",
     lut_labels
 )
 
 engine.animate_lut_activation(
     fabric,
+    routing,
+    switchbox,
     "LUT3",
     lut_labels
 )
@@ -205,12 +229,14 @@ z = fabric.luts["LUT3"].compute()
 print("LUT3 Output =", z)
 
 
+# Draw FPGA state
 engine.draw_fpga(
     fabric,
-    lut_labels
+    routing,
+    switchbox,
+    lut_labels,
+    active_lut="LUT2"
 )
-
-plt.pause(1)
 
 
 # -------------------
@@ -220,10 +246,10 @@ engine.run_cycle(4)
 
 print("\n=== Runtime FPGA Reconfiguration ===")
 
-print("Reprogramming LUT2 from current logic to OR")
+print("Reprogramming LUT2 to OR")
 
 
-# Generate new memory
+# Generate new LUT memory
 new_memory = configurator.generate_memory(
     "OR"
 )
@@ -233,17 +259,15 @@ new_memory = configurator.generate_memory(
 fabric.luts["LUT2"].memory = new_memory
 
 
-# Update displayed logic label
+# Update displayed label
 lut_labels["LUT2"] = "OR"
-
-
-print("New LUT2 Memory =")
-print(new_memory)
 
 
 # Animate reconfiguration
 engine.animate_lut_activation(
     fabric,
+    routing,
+    switchbox,
     "LUT2",
     lut_labels
 )
@@ -255,12 +279,14 @@ new_output = fabric.luts["LUT2"].compute()
 print("Reconfigured LUT2 Output =", new_output)
 
 
-# Final FPGA view
+# Final FPGA draw
 engine.draw_fpga(
     fabric,
-    lut_labels
+    routing,
+    switchbox,
+    lut_labels,
+    active_lut="LUT2"
 )
 
-plt.ioff()
 
-plt.show()
+input("\nPress Enter to close visualization...")

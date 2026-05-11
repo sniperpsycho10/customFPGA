@@ -5,9 +5,29 @@ import numpy as np
 
 class SignalEngine:
 
-    def __init__(self):
+    def __init__(
+        self,
+        visual_mode="3D"
+    ):
 
         self.signal_queue = []
+
+        self.visual_mode = visual_mode
+
+        self.fig, self.ax = plt.subplots()
+
+        plt.ion()
+
+
+    def clear_canvas(self):
+
+        self.ax.clear()
+
+        self.ax.set_title(
+            "Advanced FPGA Visualization"
+        )
+
+        self.ax.axis("off")
 
 
     def add_signal_event(
@@ -21,56 +41,132 @@ class SignalEngine:
         )
 
 
-    def process_signal_queue(
+    def draw_lut(
         self,
-        routing,
-        fabric,
-        switchbox
+        x,
+        y,
+        lut_name,
+        lut_color,
+        size,
+        label
     ):
 
-        active_routes = []
+        # --------------------
+        # 3D MODE
+        # --------------------
+        if self.visual_mode == "3D":
 
-        while self.signal_queue:
-
-            source, signal = self.signal_queue.pop(0)
-
-            routed_paths = routing.route_signal(
-                source,
-                signal,
-                fabric,
-                switchbox
+            # Shadow layer
+            self.ax.scatter(
+                x + 0.05,
+                y - 0.05,
+                s=size,
+                color="black",
+                alpha=0.3
             )
 
-            active_routes.extend(routed_paths)
+            # Main LUT
+            self.ax.scatter(
+                x,
+                y,
+                s=size,
+                color=lut_color,
+                edgecolors="black"
+            )
 
-        return active_routes
+        # --------------------
+        # 2D MODE
+        # --------------------
+        else:
+
+            self.ax.scatter(
+                x,
+                y,
+                s=size,
+                color=lut_color,
+                edgecolors="black"
+            )
 
 
-    def animate_signal(
+        self.ax.text(
+            x,
+            y,
+            label,
+            ha='center',
+            va='center',
+            fontsize=9,
+            fontweight='bold'
+        )
+
+
+    def draw_route(
         self,
-        fabric,
-        source_lut,
-        destination_lut,
-        lut_labels=None
+        x1,
+        y1,
+        x2,
+        y2,
+        color,
+        width
     ):
 
-        plt.clf()
+        # --------------------
+        # 3D ROUTING
+        # --------------------
+        if self.visual_mode == "3D":
 
-        fig = plt.gcf()
-        ax = fig.gca()
+            # Shadow route
+            self.ax.plot(
+                [x1 + 0.03, x2 + 0.03],
+                [y1 - 0.03, y2 - 0.03],
+                color="black",
+                alpha=0.2,
+                linewidth=width + 1
+            )
 
 
-        # Draw LUTs
+        # Main route
+        self.ax.plot(
+            [x1, x2],
+            [y1, y2],
+            color=color,
+            linewidth=width
+        )
+
+
+    def draw_fpga(
+        self,
+        fabric,
+        routing,
+        switchbox,
+        lut_labels=None,
+        active_lut=None,
+        active_routes=None
+    ):
+
+        self.clear_canvas()
+
+
+        # --------------------
+        # DRAW LUTS
+        # --------------------
         for (row, column), lut_name in fabric.grid.items():
 
-            ax.scatter(
-                column,
-                -row,
-                s=3000
-            )
+            if lut_name == active_lut:
 
-            # Display labels
-            if lut_labels and lut_name in lut_labels:
+                lut_color = "yellow"
+                size = 4000
+
+            else:
+
+                lut_color = "skyblue"
+                size = 3000
+
+
+            # Labels
+            if (
+                lut_labels and
+                lut_name in lut_labels
+            ):
 
                 display_text = (
                     lut_name +
@@ -84,17 +180,117 @@ class SignalEngine:
                 display_text = lut_name
 
 
-            ax.text(
+            self.draw_lut(
                 column,
                 -row,
-                display_text,
-                ha='center',
-                va='center',
-                fontsize=10
+                lut_name,
+                lut_color,
+                size,
+                display_text
             )
 
 
-        # Find positions
+        # --------------------
+        # DRAW ROUTES
+        # --------------------
+        for source, destinations in routing.routes.items():
+
+            source_lut = source.replace(
+                "_OUT",
+                ""
+            )
+
+            source_position = None
+
+
+            for position, lut_name in fabric.grid.items():
+
+                if lut_name == source_lut:
+
+                    source_position = position
+
+
+            for destination_lut, _ in destinations:
+
+                destination_position = None
+
+
+                for position, lut_name in fabric.grid.items():
+
+                    if lut_name == destination_lut:
+
+                        destination_position = position
+
+
+                if (
+                    source_position and
+                    destination_position
+                ):
+
+                    x1 = source_position[1]
+                    y1 = -source_position[0]
+
+                    x2 = destination_position[1]
+                    y2 = -destination_position[0]
+
+
+                    route_name = (
+                        source +
+                        "->" +
+                        destination_lut
+                    )
+
+
+                    # Active route
+                    if (
+                        active_routes and
+                        route_name in active_routes
+                    ):
+
+                        route_color = "lime"
+                        line_width = 4
+
+
+                    # Disabled route
+                    elif not switchbox.is_enabled(
+                        route_name
+                    ):
+
+                        route_color = "red"
+                        line_width = 2
+
+
+                    # Idle route
+                    else:
+
+                        route_color = "gray"
+                        line_width = 2
+
+
+                    self.draw_route(
+                        x1,
+                        y1,
+                        x2,
+                        y2,
+                        route_color,
+                        line_width
+                    )
+
+
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
+
+    def animate_signal(
+        self,
+        fabric,
+        routing,
+        switchbox,
+        source_lut,
+        destination_lut,
+        lut_labels=None
+    ):
+
         source_position = None
         destination_position = None
 
@@ -102,9 +298,11 @@ class SignalEngine:
         for position, lut_name in fabric.grid.items():
 
             if lut_name == source_lut:
+
                 source_position = position
 
             if lut_name == destination_lut:
+
                 destination_position = position
 
 
@@ -115,48 +313,51 @@ class SignalEngine:
         y2 = -destination_position[0]
 
 
-        # Draw wire
-        ax.plot(
-            [x1, x2],
-            [y1, y2],
-            linewidth=2
-        )
+        steps = 50
 
-
-        # Animate moving signal
-        steps = 30
 
         for t in np.linspace(0, 1, steps):
+
+            self.draw_fpga(
+                fabric,
+                routing,
+                switchbox,
+                lut_labels,
+                active_routes=[
+                    source_lut +
+                    "_OUT->" +
+                    destination_lut
+                ]
+            )
+
 
             signal_x = x1 + (x2 - x1) * t
             signal_y = y1 + (y2 - y1) * t
 
-            dot = ax.scatter(
+
+            self.ax.scatter(
                 signal_x,
                 signal_y,
-                s=300
+                s=300,
+                color="lime",
+                edgecolors="black"
             )
 
-            plt.pause(0.05)
 
-            dot.remove()
+            self.fig.canvas.draw()
+            self.fig.canvas.flush_events()
 
-
-        plt.draw()
+            plt.pause(0.02)
 
 
     def animate_lut_activation(
         self,
         fabric,
+        routing,
+        switchbox,
         active_lut,
         lut_labels=None
     ):
-
-        plt.clf()
-
-        fig = plt.gcf()
-        ax = fig.gca()
-
 
         pulse_sizes = [
             3000,
@@ -169,110 +370,15 @@ class SignalEngine:
 
         for size in pulse_sizes:
 
-            plt.clf()
-
-            ax = plt.gca()
-
-            for (row, column), lut_name in fabric.grid.items():
-
-                if lut_name == active_lut:
-
-                    ax.scatter(
-                        column,
-                        -row,
-                        s=size
-                    )
-
-                else:
-
-                    ax.scatter(
-                        column,
-                        -row,
-                        s=3000
-                    )
-
-
-                # Display labels
-                if lut_labels and lut_name in lut_labels:
-
-                    display_text = (
-                        lut_name +
-                        "\n(" +
-                        lut_labels[lut_name] +
-                        ")"
-                    )
-
-                else:
-
-                    display_text = lut_name
-
-
-                ax.text(
-                    column,
-                    -row,
-                    display_text,
-                    ha='center',
-                    va='center',
-                    fontsize=10
-                )
-
-            ax.set_title(
-                "LUT Activation"
+            self.draw_fpga(
+                fabric,
+                routing,
+                switchbox,
+                lut_labels,
+                active_lut=active_lut
             )
 
-            plt.pause(0.2)
-
-
-    def draw_fpga(
-        self,
-        fabric,
-        lut_labels=None
-    ):
-
-        plt.clf()
-
-        fig = plt.gcf()
-        ax = fig.gca()
-
-
-        for (row, column), lut_name in fabric.grid.items():
-
-            ax.scatter(
-                column,
-                -row,
-                s=3000
-            )
-
-
-            # Display logic labels
-            if lut_labels and lut_name in lut_labels:
-
-                display_text = (
-                    lut_name +
-                    "\n(" +
-                    lut_labels[lut_name] +
-                    ")"
-                )
-
-            else:
-
-                display_text = lut_name
-
-
-            ax.text(
-                column,
-                -row,
-                display_text,
-                ha='center',
-                va='center',
-                fontsize=10
-            )
-
-        ax.set_title(
-            "FPGA Configuration Visualization"
-        )
-
-        plt.draw()
+            plt.pause(0.08)
 
 
     def run_cycle(

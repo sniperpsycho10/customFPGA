@@ -2,18 +2,18 @@
 
 A software-based FPGA architecture simulator built completely in Python.
 
-This project recreates the internal architecture of an FPGA including:
+This project recreates internal FPGA architecture concepts including:
 
-- LUT (Look-Up Table) logic blocks
+- LUT logic fabric
 - Routing fabric
 - Switch box architecture
 - FPGA grid topology
 - Signal propagation engine
-- Animated signal visualization
 - Runtime FPGA reconfiguration
-- JSON FPGA configuration loading
+- Interactive FPGA visualization
+- Pseudo-3D FPGA rendering
 
-The goal of this project is to deeply understand how real FPGA hardware works internally.
+The goal of this project is to deeply understand how FPGA hardware works internally.
 
 ---
 
@@ -26,11 +26,11 @@ The project models:
 - FPGA logic computation
 - Programmable interconnects
 - Switch matrices
-- Grid topology
+- FPGA topology
 - Propagation timing
-- Hardware-style execution cycles
-- Signal movement visualization
-- FPGA runtime configuration
+- Runtime FPGA programming
+- Signal visualization
+- Interactive FPGA rendering
 
 ---
 
@@ -164,12 +164,46 @@ Implemented:
 
 ---
 
+# Phase 7 — Advanced Visualization System ✅
+
+Implemented:
+
+- Advanced route visualization
+- Interactive FPGA rendering
+- Real-time FPGA updates
+- Active route highlighting
+- Switch-state visualization
+- Pseudo-3D FPGA rendering
+- Visualization mode switching
+
+### Visualization Features
+
+| Visualization Feature | Status |
+|---|---|
+| Active route coloring | ✅ |
+| Signal propagation animation | ✅ |
+| LUT activation pulses | ✅ |
+| Runtime reconfiguration visualization | ✅ |
+| Interactive rendering | ✅ |
+| Pseudo-3D FPGA rendering | ✅ |
+| FPGA logic labels | ✅ |
+
+### Supported Visualization Modes
+
+| Mode | Description |
+|---|---|
+| 2D | Standard FPGA topology |
+| 3D | Pseudo-3D FPGA rendering |
+
+---
+
 # Project Structure
 
 ```text
 CustomFPGA/
 │
 ├── assets/
+│
 ├── configs/
 │   └── fpga_config.json
 │
