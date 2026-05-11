@@ -2,73 +2,133 @@
 
 A software-based FPGA architecture simulator built completely in Python.
 
-This project simulates the internal architecture of an FPGA including:
+This project recreates the internal architecture of an FPGA including:
 
 - LUT (Look-Up Table) logic blocks
-- Programmable routing fabric
-- Signal propagation
-- FPGA fabric topology
-- Dynamic interconnect architecture
+- Routing fabric
+- Switch box architecture
+- FPGA grid topology
+- Signal propagation engine
+- Animated signal visualization
+- Runtime FPGA reconfiguration
 
-The goal of this project is to understand FPGA internals from an architecture-level perspective rather than only using HDL tools.
+The goal of this project is to deeply understand how real FPGA hardware works internally.
 
 ---
 
 # Project Goals
 
-This project aims to simulate how real FPGA hardware works internally.
+This simulator focuses on FPGA architecture rather than only HDL programming.
 
-Instead of only writing Verilog/VHDL, this simulator focuses on:
+The project models:
 
-- FPGA logic fabric
-- LUT-based computation
-- Routing architecture
+- FPGA logic computation
 - Programmable interconnects
-- Scalable FPGA topology
-- Hardware-style signal propagation
+- Switch matrices
+- Grid topology
+- Propagation timing
+- Hardware-style execution cycles
+- Signal movement visualization
 
 ---
 
 # Current Progress
 
-## Phase 1 — LUT Architecture ✅
+---
+
+# Phase 1 — LUT Architecture ✅
 
 Implemented:
 
 - 4-input programmable LUTs
 - LUT object-oriented architecture
-- LUT signal computation
-- Binary-address-based LUT evaluation
-- Multiple connected LUT objects
-- Inter-LUT signal propagation
+- Binary-address LUT evaluation
+- Multi-LUT signal flow
+- Inter-LUT communication
 
 ### Features
 
-- Reusable LUT class
-- Dynamic LUT inputs
-- Dynamic LUT outputs
-- Scalable LUT objects
+- Reusable LUT blocks
+- Dynamic LUT inputs/outputs
+- Modular logic-cell architecture
 
 ---
 
-## Phase 2 — Routing Architecture ✅
+# Phase 2 — Routing Architecture ✅
 
 Implemented:
 
 - Programmable routing tables
-- Dynamic signal routing
 - Automatic routing engine
-- FPGA-style interconnect propagation
-- Multi-destination routing (fanout)
+- FPGA-style signal propagation
+- Multi-destination routing
 - FPGA fabric manager
 
 ### Features
 
-- Routing class
+- Dynamic routing
+- Fanout architecture
+- Scalable FPGA fabric
 - Automatic signal movement
-- Multi-LUT routing
-- FPGA fabric container
-- Scalable routing architecture
+
+---
+
+# Phase 3 — Switch Box Architecture ✅
+
+Implemented:
+
+- Programmable switch matrices
+- Runtime route enable/disable
+- Dynamic reconfiguration
+- Selective fanout control
+
+### Features
+
+- SwitchBox class
+- Runtime routing control
+- Programmable interconnect switching
+
+---
+
+# Phase 4 — FPGA Grid Architecture ✅
+
+Implemented:
+
+- 2D FPGA topology
+- LUT physical placement
+- Neighbor-aware architecture
+- Grid-based routing
+- Basic FPGA visualization
+
+### Features
+
+- Spatial LUT organization
+- Physical FPGA coordinates
+- Neighbor detection
+- Topology-aware routing
+- Matplotlib FPGA visualization
+
+---
+
+# Phase 5 — Signal Propagation Engine ✅
+
+Implemented:
+
+- Simulation cycles
+- Delayed signal routing
+- Signal event queue
+- Hardware-style propagation
+- Animated signal movement
+- LUT activation animation
+
+### Features
+
+- Propagation timing engine
+- Cycle-based FPGA execution
+- Live signal animation
+- Route traversal visualization
+- Dynamic LUT activation
+- Real-time FPGA updates
 
 ---
 
