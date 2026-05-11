@@ -6,11 +6,9 @@ class Routing:
 
     def add_route(self, source, destination):
 
-        # Create list if source doesn't exist
         if source not in self.routes:
             self.routes[source] = []
 
-        # Add destination to route list
         self.routes[source].append(destination)
 
 
@@ -22,16 +20,26 @@ class Routing:
                 print(source, "->", destination)
 
 
-    def route_signal(self, source, signal, luts):
+    def route_signal(self, source, signal, luts, switchbox):
 
-        # Get all destinations
         destinations = self.routes[source]
 
-        # Route signal to every destination
         for destination_lut_name, destination_index in destinations:
 
-            # Get LUT object
-            destination_lut = luts[destination_lut_name]
+            # Create route identifier
+            route_name = source + "->" + destination_lut_name
 
-            # Inject signal
-            destination_lut.inputs[destination_index] = signal
+            # Check switch state
+            if switchbox.is_enabled(route_name):
+
+                # Get LUT object
+                destination_lut = luts[destination_lut_name]
+
+                # Inject signal
+                destination_lut.inputs[destination_index] = signal
+
+                print("Signal Routed Through:", route_name)
+
+            else:
+
+                print("Route Blocked:", route_name)
