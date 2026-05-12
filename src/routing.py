@@ -1,22 +1,24 @@
-from collections import deque
 import random
+from collections import deque
 
 
 class Routing:
 
     def __init__(self):
 
-        self.routes = {}
-
         self.graph = {}
 
         self.congestion = {}
 
-        self.route_delays = {}
-
-        self.max_capacity = 3
+        self.signal_queue = {}
 
         self.signal_queue = []
+
+        self.route_delays = {}
+
+        self.critical_path = None
+
+        self.max_delay = 0
 
 
     # -------------------------
@@ -39,6 +41,7 @@ class Routing:
 
 
         route_name = (
+
             source +
             "->" +
             destination
@@ -50,65 +53,47 @@ class Routing:
         ] = 0
 
 
-        # Random timing delay
-        self.route_delays[
-            route_name
-        ] = random.randint(1,3)
-
-
-    # -------------------------
-    # BFS PATHFINDING
-    # -------------------------
-    def find_path(
-        self,
-        start,
-        end
-    ):
-
-        queue = deque()
-
-        queue.append(
-            (start, [start])
+        # -------------------------
+        # RANDOM DELAY
+        # -------------------------
+        delay = random.randint(
+            1,
+            5
         )
 
-        visited = set()
+
+        self.route_delays[
+            route_name
+        ] = delay
 
 
-        while queue:
+        # -------------------------
+        # CRITICAL PATH TRACKING
+        # -------------------------
+        if delay > self.max_delay:
 
-            current_node, path = queue.popleft()
+            self.max_delay = delay
+
+            self.critical_path = route_name
 
 
-            if current_node == end:
+    # -------------------------
+    # SHOW GRAPH
+    # -------------------------
+    def show_graph(self):
 
-                return path
+        print(
+            "\nFPGA Routing Graph:\n"
+        )
 
 
-            visited.add(
-                current_node
+        for source, destinations in self.graph.items():
+
+            print(
+                source,
+                "->",
+                destinations
             )
-
-
-            neighbors = self.graph.get(
-                current_node,
-                []
-            )
-
-
-            for neighbor in neighbors:
-
-                if neighbor not in visited:
-
-                    queue.append(
-
-                        (
-                            neighbor,
-                            path + [neighbor]
-                        )
-                    )
-
-
-        return None
 
 
     # -------------------------
@@ -120,39 +105,50 @@ class Routing:
         destination
     ):
 
-        path = self.find_path(
-            source,
-            destination
+        queue = deque()
+
+        queue.append(
+            (source, [source])
         )
 
-
-        if path:
-
-            print(
-                "\nAuto-Routed Path:"
-            )
-
-            print(path)
+        visited = set()
 
 
-            if (
-                source + "_OUT"
-                not in self.routes
+        while queue:
+
+            current, path = queue.popleft()
+
+
+            if current == destination:
+
+                print(
+                    "\nAuto-Routed Path:"
+                )
+
+                print(path)
+
+                return path
+
+
+            visited.add(current)
+
+
+            for neighbor in self.graph.get(
+                current,
+                []
             ):
 
-                self.routes[
-                    source + "_OUT"
-                ] = []
+                if neighbor not in visited:
+
+                    queue.append(
+                        (
+                            neighbor,
+                            path + [neighbor]
+                        )
+                    )
 
 
-            self.routes[
-                source + "_OUT"
-            ].append(
-                (
-                    destination,
-                    0
-                )
-            )
+        return None
 
 
     # -------------------------
@@ -160,35 +156,31 @@ class Routing:
     # -------------------------
     def inject_signal(
         self,
-        source,
-        signal,
+        source_output_name,
+        signal_value,
         current_cycle
     ):
 
-        if source not in self.routes:
+        source_lut = source_output_name.replace(
+            "_OUT",
+            ""
+        )
+
+
+        if source_lut not in self.graph:
 
             return
 
 
-        destinations = self.routes[source]
-
-
-        for (
-            destination_lut,
-            destination_index
-        ) in destinations:
-
+        for destination in self.graph[
+            source_lut
+        ]:
 
             route_name = (
 
-                source.replace(
-                    "_OUT",
-                    ""
-                ) +
-
+                source_lut +
                 "->" +
-
-                destination_lut
+                destination
             )
 
 
@@ -199,24 +191,18 @@ class Routing:
 
             packet = {
 
-                "source": source.replace(
-                    "_OUT",
-                    ""
-                ),
+                "source": source_lut,
 
-                "destination": destination_lut,
+                "destination": destination,
 
-                "signal": signal,
-
-                "progress": 0.0,
+                "signal": signal_value,
 
                 "delay": delay,
 
-                "start_cycle": current_cycle,
+                "progress": 0.0,
 
                 "arrival_cycle": (
-                    current_cycle +
-                    delay
+                    current_cycle + delay
                 )
             }
 
@@ -234,7 +220,7 @@ class Routing:
             )
 
 
-       # -------------------------
+    # -------------------------
     # ADVANCE SIGNALS
     # -------------------------
     def advance_signals(
@@ -252,16 +238,12 @@ class Routing:
             delay = packet["delay"]
 
 
-            # -------------------------
-            # SAFE PROGRESS UPDATE
-            # -------------------------
             packet["progress"] += (
 
                 1.0 / (delay * 5)
             )
 
 
-            # Clamp
             if packet["progress"] > 1.0:
 
                 packet["progress"] = 1.0
@@ -280,6 +262,7 @@ class Routing:
 
 
                 route_name = (
+
                     source +
                     "->" +
                     destination
@@ -287,6 +270,7 @@ class Routing:
 
 
                 switch_name = (
+
                     source +
                     "_OUT->" +
                     destination
@@ -300,16 +284,6 @@ class Routing:
                     self.congestion[
                         route_name
                     ] += 1
-
-
-                    destination_lut = fabric.luts[
-                        destination
-                    ]
-
-
-                    destination_lut.inputs[
-                        0
-                    ] = packet["signal"]
 
 
                     print(
@@ -327,15 +301,33 @@ class Routing:
 
         for packet in delivered_packets:
 
-            if packet in self.signal_queue:
-
-                self.signal_queue.remove(
-                    packet
-                )
+            self.signal_queue.remove(
+                packet
+            )
 
 
     # -------------------------
-    # SHOW TIMING
+    # SHOW CONGESTION
+    # -------------------------
+    def show_congestion(self):
+
+        print(
+            "\nRouting Congestion:\n"
+        )
+
+
+        for route, usage in self.congestion.items():
+
+            print(
+                route,
+                "->",
+                usage,
+                "/ 3"
+            )
+
+
+    # -------------------------
+    # SHOW TIMING REPORT
     # -------------------------
     def show_timing_report(self):
 
@@ -355,52 +347,39 @@ class Routing:
 
 
     # -------------------------
-    # RESET CONGESTION
+    # SHOW CRITICAL PATH
     # -------------------------
-    def reset_congestion(self):
-
-        for route in self.congestion:
-
-            self.congestion[
-                route
-            ] = 0
-
-
-    # -------------------------
-    # SHOW CONGESTION
-    # -------------------------
-    def show_congestion(self):
+    def show_critical_path(self):
 
         print(
-            "\nRouting Congestion:\n"
+            "\nCRITICAL PATH ANALYSIS:\n"
         )
 
 
-        for route, usage in self.congestion.items():
-
-            print(
-                route,
-                "->",
-                usage,
-                "/",
-                self.max_capacity
-            )
-
-
-    # -------------------------
-    # SHOW GRAPH
-    # -------------------------
-    def show_graph(self):
-
         print(
-            "\nFPGA Routing Graph:\n"
+            "Critical Route:",
+            self.critical_path
         )
 
 
-        for node, neighbors in self.graph.items():
+        print(
+            "Worst Delay:",
+            self.max_delay,
+            "cycles"
+        )
 
-            print(
-                node,
-                "->",
-                neighbors
-            )
+
+        estimated_frequency = (
+
+            100 / self.max_delay
+        )
+
+
+        print(
+            "Estimated Max Clock:",
+            round(
+                estimated_frequency,
+                2
+            ),
+            "MHz"
+        )

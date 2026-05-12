@@ -1,4 +1,5 @@
 from lut import LUT
+from register import Register
 from routing import Routing
 from fabric import Fabric
 from switchbox import SwitchBox
@@ -9,9 +10,9 @@ from netlist import Netlist
 import time
 
 
-# -------------------------
-# HDL DESCRIPTION
-# -------------------------
+# =========================================================
+# HDL PROGRAM
+# =========================================================
 
 hdl_program = [
 
@@ -19,15 +20,15 @@ hdl_program = [
 
     "LUT2 = AND(LUT1,C)",
 
-    "LUT3 = OR(LUT1,D)",
+    "LUT3 = OR(LUT2,D)",
 
-    "LUT4 = XOR(LUT2,LUT3)"
+    "LUT4 = XOR(LUT3,A)"
 ]
 
 
-# -------------------------
-# CONFIGURATION
-# -------------------------
+# =========================================================
+# CONFIGURATOR
+# =========================================================
 
 configurator = Configurator()
 
@@ -36,12 +37,24 @@ parsed_nodes = configurator.parse_hdl(
 )
 
 
-# -------------------------
-# NETLIST
-# -------------------------
+# =========================================================
+# FPGA OBJECTS
+# =========================================================
+
+fabric = Fabric()
+
+routing = Routing()
+
+switchbox = SwitchBox()
 
 netlist = Netlist()
 
+engine = SignalEngine()
+
+
+# =========================================================
+# BUILD NETLIST
+# =========================================================
 
 for node in parsed_nodes:
 
@@ -57,27 +70,12 @@ for node in parsed_nodes:
 
 netlist.build_connections()
 
-netlist.show_netlist()
 
+# =========================================================
+# CREATE LUTS + REGISTERS
+# =========================================================
 
-# -------------------------
-# FABRIC
-# -------------------------
-
-fabric = Fabric()
-
-routing = Routing()
-
-switchbox = SwitchBox()
-
-
-# -------------------------
-# CREATE LUTS
-# -------------------------
-
-layer = 0
-row = 0
-column = 0
+register_count = 1
 
 
 for node in parsed_nodes:
@@ -87,10 +85,18 @@ for node in parsed_nodes:
     logic_type = node["logic"]
 
 
+    # -----------------------------------------------------
+    # CREATE LUT MEMORY
+    # -----------------------------------------------------
+
     memory = configurator.logic_to_memory(
         logic_type
     )
 
+
+    # -----------------------------------------------------
+    # CREATE LUT
+    # -----------------------------------------------------
 
     lut = LUT(
         lut_name,
@@ -99,26 +105,71 @@ for node in parsed_nodes:
 
 
     fabric.add_lut(
-        lut,
-        layer,
-        row,
-        column
+        lut
     )
 
 
-    layer = (layer + 1) % 3
+    # -----------------------------------------------------
+    # CREATE REGISTER
+    # -----------------------------------------------------
 
-    row += 1
+    reg_name = (
+        "REG" +
+        str(register_count)
+    )
 
-    column = (column + 1) % 3
 
+    register = Register(
+        reg_name,
+        pipeline_stage=register_count
+    )
+
+
+    # -----------------------------------------------------
+    # PLACE REGISTER NEAR LUT
+    # -----------------------------------------------------
+
+    fabric.add_register(
+
+        register,
+
+        parent_lut_name=lut_name
+    )
+
+
+    register_count += 1
+
+
+# =========================================================
+# FORCE-DIRECTED PLACEMENT
+# =========================================================
+
+fabric.optimize_placement(
+    netlist
+)
+
+fabric.snap_to_grid()
+
+
+# =========================================================
+# SHOW NETLIST
+# =========================================================
+
+netlist.show_netlist()
+
+
+# =========================================================
+# SHOW FLOORPLAN
+# =========================================================
 
 fabric.show_grid()
 
+fabric.show_utilization()
 
-# -------------------------
+
+# =========================================================
 # BUILD ROUTING GRAPH
-# -------------------------
+# =========================================================
 
 for source, destination in netlist.connections:
 
@@ -131,9 +182,9 @@ for source, destination in netlist.connections:
 routing.show_graph()
 
 
-# -------------------------
+# =========================================================
 # AUTO ROUTING
-# -------------------------
+# =========================================================
 
 for source, destination in netlist.connections:
 
@@ -143,9 +194,18 @@ for source, destination in netlist.connections:
     )
 
 
-# -------------------------
-# ENABLE SWITCHES
-# -------------------------
+# =========================================================
+# TIMING REPORT
+# =========================================================
+
+routing.show_timing_report()
+
+routing.show_critical_path()
+
+
+# =========================================================
+# SWITCHBOXES
+# =========================================================
 
 for source, destination in netlist.connections:
 
@@ -163,18 +223,9 @@ for source, destination in netlist.connections:
     )
 
 
-# -------------------------
-# SIGNAL ENGINE
-# -------------------------
-
-engine = SignalEngine(
-    visual_mode="3D"
-)
-
-
-# -------------------------
-# LUT LABELS
-# -------------------------
+# =========================================================
+# LABELS
+# =========================================================
 
 lut_labels = {}
 
@@ -186,13 +237,23 @@ for node in parsed_nodes:
     ] = node["logic"]
 
 
-# -------------------------
-# INPUTS
-# -------------------------
+for reg_name in fabric.registers:
+
+    lut_labels[
+        reg_name
+    ] = "PIPE"
+
+
+# =========================================================
+# USER INPUTS
+# =========================================================
 
 a = int(input("\nEnter A: "))
+
 b = int(input("Enter B: "))
+
 c = int(input("Enter C: "))
+
 d = int(input("Enter D: "))
 
 
@@ -208,9 +269,9 @@ input_map = {
 }
 
 
-# -------------------------
+# =========================================================
 # INITIALIZE LUT INPUTS
-# -------------------------
+# =========================================================
 
 for node in parsed_nodes:
 
@@ -244,20 +305,14 @@ for node in parsed_nodes:
     )
 
 
-# -------------------------
-# EXECUTION
-# -------------------------
-
-routing.reset_congestion()
-
-routing.show_timing_report()
+# =========================================================
+# PIPELINE EXECUTION
+# =========================================================
 
 cycle = 1
 
+pipeline_stage = 1
 
-# -------------------------
-# MAIN EXECUTION LOOP
-# -------------------------
 
 for node in parsed_nodes:
 
@@ -266,24 +321,33 @@ for node in parsed_nodes:
     )
 
 
-    lut_name = node["lut"]
-
-
-    # -------------------------
-    # LUT ACTIVATION ANIMATION
-    # -------------------------
-    engine.animate_lut_activation(
-        fabric,
-        routing,
-        switchbox,
-        lut_name,
-        lut_labels
+    engine.show_pipeline_barrier(
+        pipeline_stage
     )
 
 
-    # -------------------------
-    # COMPUTE LUT OUTPUT
-    # -------------------------
+    lut_name = node["lut"]
+
+
+    # -----------------------------------------------------
+    # DRAW FPGA
+    # -----------------------------------------------------
+
+    engine.draw_fpga(
+
+        fabric,
+        routing,
+        switchbox,
+        lut_labels,
+
+        active_component=lut_name
+    )
+
+
+    # -----------------------------------------------------
+    # COMPUTE LUT
+    # -----------------------------------------------------
+
     output = fabric.luts[
         lut_name
     ].compute()
@@ -296,22 +360,85 @@ for node in parsed_nodes:
     )
 
 
-    # -------------------------
-    # INJECT SIGNAL PACKETS
-    # -------------------------
+    # -----------------------------------------------------
+    # PIPELINE REGISTER
+    # -----------------------------------------------------
+
+    reg_name = (
+        "REG" +
+        str(pipeline_stage)
+    )
+
+
+    register = fabric.registers[
+        reg_name
+    ]
+
+
+    register.load_input(
+        output
+    )
+
+
+    print(
+        reg_name,
+        "Pipeline Loaded =",
+        output
+    )
+
+
+    time.sleep(0.5)
+
+
+    # -----------------------------------------------------
+    # CLOCK WAVE
+    # -----------------------------------------------------
+
+    engine.animate_clock_wave(
+
+        fabric,
+        routing,
+        switchbox,
+        lut_labels
+    )
+
+
+    # -----------------------------------------------------
+    # CLOCK EDGE
+    # -----------------------------------------------------
+
+    register.clock_tick()
+
+
+    print(
+        reg_name,
+        "Pipeline Output =",
+        register.get_output()
+    )
+
+
+    # -----------------------------------------------------
+    # INJECT SIGNAL
+    # -----------------------------------------------------
+
     routing.inject_signal(
+
         lut_name + "_OUT",
-        output,
+
+        register.get_output(),
+
         cycle
     )
 
 
-    # -------------------------
+    # -----------------------------------------------------
     # ADVANCE SIGNALS
-    # -------------------------
-    for step in range(5):
+    # -----------------------------------------------------
+
+    for step in range(10):
 
         routing.advance_signals(
+
             fabric,
             switchbox,
             cycle
@@ -319,38 +446,34 @@ for node in parsed_nodes:
 
 
         engine.draw_fpga(
+
             fabric,
             routing,
             switchbox,
             lut_labels,
-            active_lut=lut_name
+
+            active_component=reg_name
         )
 
 
-        time.sleep(0.2)
+        time.sleep(0.04)
 
+
+    # -----------------------------------------------------
+    # SHOW CONGESTION
+    # -----------------------------------------------------
 
     routing.show_congestion()
 
+
     cycle += 1
 
+    pipeline_stage += 1
 
-# -------------------------
+
+# =========================================================
 # FINAL TIMING FLUSH
-# -------------------------
-
-print(
-    "\n=========="
-)
-
-print(
-    "Final Timing Flush"
-)
-
-print(
-    "=========="
-)
-
+# =========================================================
 
 while len(routing.signal_queue) > 0:
 
@@ -360,6 +483,7 @@ while len(routing.signal_queue) > 0:
 
 
     routing.advance_signals(
+
         fabric,
         switchbox,
         cycle
@@ -367,6 +491,7 @@ while len(routing.signal_queue) > 0:
 
 
     engine.draw_fpga(
+
         fabric,
         routing,
         switchbox,
@@ -374,21 +499,17 @@ while len(routing.signal_queue) > 0:
     )
 
 
-    routing.show_congestion()
-
-
-    time.sleep(0.5)
-
+    time.sleep(0.08)
 
     cycle += 1
 
 
-# -------------------------
-# FINISHED
-# -------------------------
+# =========================================================
+# DONE
+# =========================================================
 
 print(
-    "\nFPGA Timing Simulation Complete."
+    "\nFPGA Floorplanning + Timing Closure Simulation Complete."
 )
 
 

@@ -1,41 +1,71 @@
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+import numpy as np
 import time
 
 
 class SignalEngine:
 
-    def __init__(
-        self,
-        visual_mode="3D"
-    ):
-
-        self.visual_mode = visual_mode
-
-        self.fig, self.ax = plt.subplots()
+    def __init__(self):
 
         plt.ion()
 
+        self.fig = plt.figure(
+            figsize=(12, 9)
+        )
+
+        self.ax = self.fig.add_subplot(
+            111,
+            projection='3d'
+        )
+
+        # -------------------------
+        # INTERACTIVE CONTROLS
+        # -------------------------
+        self.fig.canvas.toolbar_visible = True
+
 
     # -------------------------
-    # CLEAR CANVAS
+    # CLEAR
     # -------------------------
     def clear_canvas(self):
 
-        self.ax.clear()
+        self.ax.cla()
 
         self.ax.set_title(
-            "FPGA Timing-Aware Routing"
+            "Interactive 3D FPGA Floorplanner"
         )
 
-        self.ax.axis("off")
+        self.ax.set_xlim(0, 10)
+
+        self.ax.set_ylim(0, 10)
+
+        self.ax.set_zlim(0, 5)
+
+        self.ax.set_xlabel("X")
+
+        self.ax.set_ylabel("Y")
+
+        self.ax.set_zlabel("Layer")
 
 
         # -------------------------
-        # LOCK VIEWPORT
+        # BETTER VIEW
         # -------------------------
-        self.ax.set_xlim(-1, 4)
+        self.ax.view_init(
+            elev=28,
+            azim=35
+        )
 
-        self.ax.set_ylim(-7, 1)
+
+        # -------------------------
+        # CLEANER LOOK
+        # -------------------------
+        self.ax.grid(True)
+
+        self.ax.set_box_aspect(
+            [1, 1, 0.6]
+        )
 
 
     # -------------------------
@@ -47,295 +77,429 @@ class SignalEngine:
         routing,
         switchbox,
         lut_labels=None,
-        active_lut=None
+        active_component=None
     ):
 
         self.clear_canvas()
 
 
-        # -------------------------
-        # DRAW LUTS
-        # -------------------------
-        for (
-            layer,
-            row,
-            column
-        ), lut_name in fabric.grid.items():
+        # ==================================================
+        # FPGA TILE GRID
+        # ==================================================
 
-            x = column + (layer * 0.3)
-
-            y = -row + (layer * 0.3)
+        grid_x = []
+        grid_y = []
+        grid_z = []
 
 
-            if lut_name == active_lut:
+        for x in range(10):
+
+            for y in range(10):
+
+                grid_x.append(x)
+
+                grid_y.append(y)
+
+                grid_z.append(0)
+
+
+        self.ax.scatter(
+
+            grid_x,
+            grid_y,
+            grid_z,
+
+            color='gray',
+
+            alpha=0.12,
+
+            s=12
+        )
+
+
+        # ==================================================
+        # COMPONENTS
+        # ==================================================
+
+        for component, position in fabric.floorplan.items():
+
+            x, y = position
+
+
+            # -------------------------
+            # LUT
+            # -------------------------
+            if component.startswith(
+                "LUT"
+            ):
+
+                z = 1
+
+                color = "deepskyblue"
+
+                size = 600
+
+
+            # -------------------------
+            # REGISTER
+            # -------------------------
+            else:
+
+                z = 2
+
+                color = "purple"
+
+                size = 400
+
+
+            # -------------------------
+            # ACTIVE
+            # -------------------------
+            if component == active_component:
 
                 color = "yellow"
 
-                size = 4000
-
-            else:
-
-                color = "skyblue"
-
-                size = 3000
+                size = 900
 
 
+            # -------------------------
+            # MAIN BLOCK
+            # -------------------------
             self.ax.scatter(
+
                 x,
                 y,
-                s=size,
+                z,
+
                 color=color,
-                edgecolors="black",
-                zorder=3
+
+                s=size,
+
+                edgecolors='black'
             )
 
 
-            if (
-                lut_labels and
-                lut_name in lut_labels
-            ):
-
-                text = (
-
-                    lut_name +
-                    "\n(" +
-                    lut_labels[lut_name] +
-                    ")"
-                )
-
-            else:
-
-                text = lut_name
-
-
+            # -------------------------
+            # LABEL
+            # -------------------------
             self.ax.text(
+
                 x,
                 y,
-                text,
-                ha='center',
-                va='center',
+                z + 0.2,
+
+                component,
+
                 fontsize=8,
-                fontweight='bold',
-                zorder=4
+
+                fontweight='bold'
             )
 
 
-        # -------------------------
-        # DRAW ROUTES
-        # -------------------------
+        # ==================================================
+        # ROUTING
+        # ==================================================
+
         for source, neighbors in routing.graph.items():
 
             for destination in neighbors:
 
-                source_position = fabric.get_position(
+                source_pos = fabric.get_position(
                     source
                 )
 
-                destination_position = fabric.get_position(
+                dest_pos = fabric.get_position(
                     destination
                 )
 
 
                 if (
-                    source_position and
-                    destination_position
+                    not source_pos or
+                    not dest_pos
                 ):
 
-                    s_layer, s_row, s_col = source_position
-
-                    d_layer, d_row, d_col = destination_position
+                    continue
 
 
-                    x1 = s_col + (s_layer * 0.3)
+                x1, y1 = source_pos
 
-                    y1 = -s_row + (s_layer * 0.3)
-
-                    x2 = d_col + (d_layer * 0.3)
-
-                    y2 = -d_row + (d_layer * 0.3)
+                x2, y2 = dest_pos
 
 
-                    route_name = (
-                        source +
-                        "->" +
-                        destination
-                    )
+                z = 4
 
 
-                    delay = routing.route_delays[
-                        route_name
-                    ]
+                route_name = (
+
+                    source +
+                    "->" +
+                    destination
+                )
 
 
-                    # -------------------------
-                    # DELAY COLOR
-                    # -------------------------
-                    if delay == 1:
+                delay = routing.route_delays[
+                    route_name
+                ]
 
-                        route_color = "lime"
 
-                    elif delay == 2:
+                # -------------------------
+                # CRITICAL PATH
+                # -------------------------
+                if (
+                    route_name ==
+                    routing.critical_path
+                ):
 
-                        route_color = "orange"
+                    color = "magenta"
+
+                    width = 5
+
+                else:
+
+                    if delay <= 2:
+
+                        color = "lime"
+
+                    elif delay <= 4:
+
+                        color = "orange"
 
                     else:
 
-                        route_color = "red"
+                        color = "red"
 
 
-                    self.ax.plot(
-                        [x1, x2],
-                        [y1, y2],
-                        color=route_color,
-                        linewidth=3,
-                        zorder=1
-                    )
+                    width = 2
 
 
-                    # -------------------------
-                    # DELAY LABEL
-                    # -------------------------
-                    delay_x = (
-                        x1 + x2
-                    ) / 2
+                # ==================================================
+                # MANHATTAN ROUTING
+                # ==================================================
 
-                    delay_y = (
-                        y1 + y2
-                    ) / 2
+                self.ax.plot(
 
+                    [x1, x2],
+                    [y1, y1],
+                    [z, z],
 
-                    self.ax.text(
-                        delay_x,
-                        delay_y,
-                        str(delay),
-                        fontsize=10,
-                        fontweight='bold',
-                        color="black",
-                        zorder=5
-                    )
+                    color=color,
+
+                    linewidth=width,
+
+                    alpha=0.9
+                )
 
 
-                    # -------------------------
-                    # VIA
-                    # -------------------------
-                    if s_layer != d_layer:
+                self.ax.plot(
 
-                        via_x = (
-                            x1 + x2
-                        ) / 2
+                    [x2, x2],
+                    [y1, y2],
+                    [z, z],
 
-                        via_y = (
-                            y1 + y2
-                        ) / 2
+                    color=color,
 
+                    linewidth=width,
 
-                        self.ax.scatter(
-                            via_x,
-                            via_y,
-                            s=250,
-                            color="purple",
-                            edgecolors="black",
-                            zorder=2
-                        )
+                    alpha=0.9
+                )
 
 
-        # -------------------------
-        # DRAW SIGNAL PACKETS
-        # -------------------------
+                # -------------------------
+                # DELAY LABEL
+                # -------------------------
+                mx = (x1 + x2) / 2
+
+                my = (y1 + y2) / 2
+
+
+                self.ax.text(
+
+                    mx,
+                    my,
+                    z + 0.15,
+
+                    str(delay),
+
+                    fontsize=8
+                )
+
+
+        # ==================================================
+        # SIGNAL PACKETS
+        # ==================================================
+
         for packet in routing.signal_queue:
 
-            source_position = fabric.get_position(
+            source_pos = fabric.get_position(
                 packet["source"]
             )
 
-            destination_position = fabric.get_position(
+            dest_pos = fabric.get_position(
                 packet["destination"]
             )
 
 
             if (
-                not source_position or
-                not destination_position
+                not source_pos or
+                not dest_pos
             ):
 
                 continue
 
 
-            s_layer, s_row, s_col = source_position
+            x1, y1 = source_pos
 
-            d_layer, d_row, d_col = destination_position
-
-
-            x1 = s_col + (s_layer * 0.3)
-
-            y1 = -s_row + (s_layer * 0.3)
-
-            x2 = d_col + (d_layer * 0.3)
-
-            y2 = -d_row + (d_layer * 0.3)
+            x2, y2 = dest_pos
 
 
-            # -------------------------
-            # CLAMP PROGRESS
-            # -------------------------
+            z = 4
+
+
             t = min(
                 packet["progress"],
                 1.0
             )
 
 
-            signal_x = x1 + (x2 - x1) * t
+            # ==================================================
+            # MANHATTAN PACKET MOTION
+            # ==================================================
 
-            signal_y = y1 + (y2 - y1) * t
+            if t < 0.5:
+
+                local_t = t / 0.5
+
+                signal_x = x1 + (
+                    (x2 - x1) * local_t
+                )
+
+                signal_y = y1
+
+            else:
+
+                local_t = (
+                    t - 0.5
+                ) / 0.5
 
 
+                signal_x = x2
+
+                signal_y = y1 + (
+                    (y2 - y1) * local_t
+                )
+
+
+            # -------------------------
+            # GLOW
+            # -------------------------
             self.ax.scatter(
+
                 signal_x,
                 signal_y,
-                s=300,
-                color="lime",
-                edgecolors="black",
-                zorder=6
+                z,
+
+                color='lightgreen',
+
+                s=450,
+
+                alpha=0.22
             )
 
 
-        self.fig.canvas.draw()
+            # -------------------------
+            # CORE
+            # -------------------------
+            self.ax.scatter(
 
-        self.fig.canvas.flush_events()
+                signal_x,
+                signal_y,
+                z,
+
+                color='lime',
+
+                s=120,
+
+                edgecolors='black'
+            )
+
+
+        # ==================================================
+        # REFRESH
+        # ==================================================
+
+        self.fig.canvas.draw_idle()
+
+        plt.pause(0.001)
 
 
     # -------------------------
-    # LUT ACTIVATION
+    # CLOCK WAVE
     # -------------------------
-    def animate_lut_activation(
+    def animate_clock_wave(
         self,
         fabric,
         routing,
         switchbox,
-        active_lut,
-        lut_labels=None
+        lut_labels
     ):
 
-        pulse_sizes = [
-            3000,
-            4500,
-            6000,
-            4500,
-            3000
-        ]
+        print(
+            "\nCLOCK WAVE PROPAGATING"
+        )
 
 
-        for size in pulse_sizes:
+        for flash in range(2):
 
             self.draw_fpga(
+
                 fabric,
                 routing,
                 switchbox,
-                lut_labels,
-                active_lut=active_lut
+                lut_labels
             )
 
-            plt.pause(0.05)
+
+            for component, position in fabric.floorplan.items():
+
+                if component.startswith(
+                    "REG"
+                ):
+
+                    x, y = position
+
+
+                    self.ax.scatter(
+
+                        x,
+                        y,
+                        2.5,
+
+                        color='yellow',
+
+                        s=900,
+
+                        alpha=0.35
+                    )
+
+
+            self.fig.canvas.draw_idle()
+
+            plt.pause(0.08)
+
+
+    # -------------------------
+    # PIPELINE STAGE
+    # -------------------------
+    def show_pipeline_barrier(
+        self,
+        stage
+    ):
+
+        print(
+            "\n=== PIPELINE STAGE",
+            stage,
+            "==="
+        )
 
 
     # -------------------------
@@ -347,7 +511,12 @@ class SignalEngine:
     ):
 
         print("\n==========")
-        print("Cycle", cycle_number)
+
+        print(
+            "Pipeline Clock Cycle",
+            cycle_number
+        )
+
         print("==========")
 
-        time.sleep(1)
+        time.sleep(0.6)
