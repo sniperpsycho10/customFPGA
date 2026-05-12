@@ -1,4 +1,5 @@
 from collections import deque
+import random
 
 
 class Routing:
@@ -11,11 +12,15 @@ class Routing:
 
         self.congestion = {}
 
+        self.route_delays = {}
+
         self.max_capacity = 3
+
+        self.signal_queue = []
 
 
     # -------------------------
-    # FPGA GRAPH CONNECTIONS
+    # ADD CONNECTION
     # -------------------------
     def add_connection(
         self,
@@ -33,16 +38,22 @@ class Routing:
         )
 
 
-        # Initialize congestion
         route_name = (
             source +
             "->" +
             destination
         )
 
+
         self.congestion[
             route_name
         ] = 0
+
+
+        # Random timing delay
+        self.route_delays[
+            route_name
+        ] = random.randint(1,3)
 
 
     # -------------------------
@@ -73,7 +84,9 @@ class Routing:
                 return path
 
 
-            visited.add(current_node)
+            visited.add(
+                current_node
+            )
 
 
             neighbors = self.graph.get(
@@ -87,6 +100,7 @@ class Routing:
                 if neighbor not in visited:
 
                     queue.append(
+
                         (
                             neighbor,
                             path + [neighbor]
@@ -121,7 +135,6 @@ class Routing:
             print(path)
 
 
-            # Create route list only once
             if (
                 source + "_OUT"
                 not in self.routes
@@ -132,7 +145,6 @@ class Routing:
                 ] = []
 
 
-            # Append route
             self.routes[
                 source + "_OUT"
             ].append(
@@ -143,130 +155,203 @@ class Routing:
             )
 
 
-            # Initialize logical congestion
-            logical_route = (
-                source +
-                "->" +
-                destination
-            )
-
-
-            if (
-                logical_route
-                not in self.congestion
-            ):
-
-                self.congestion[
-                    logical_route
-                ] = 0
-
-        else:
-
-            print(
-                "\nNo valid route found."
-            )
-
-
     # -------------------------
-    # ROUTE SIGNAL
+    # INJECT SIGNAL
     # -------------------------
-    def route_signal(
+    def inject_signal(
         self,
         source,
         signal,
-        fabric,
-        switchbox
+        current_cycle
     ):
-
-        active_paths = []
-
 
         if source not in self.routes:
 
-            return active_paths
+            return
 
 
         destinations = self.routes[source]
 
 
         for (
-            destination_lut_name,
+            destination_lut,
             destination_index
         ) in destinations:
 
 
             route_name = (
+
                 source.replace(
                     "_OUT",
                     ""
                 ) +
+
                 "->" +
-                destination_lut_name
+
+                destination_lut
             )
 
 
-            # Check switch
-            switch_route = (
-                source +
-                "->" +
-                destination_lut_name
-            )
-
-
-            if not switchbox.is_enabled(
-                switch_route
-            ):
-
-                print(
-                    "Blocked Route:",
-                    route_name
-                )
-
-                continue
-
-
-            # Check congestion
-            if self.congestion[
+            delay = self.route_delays[
                 route_name
-            ] >= self.max_capacity:
-
-                print(
-                    "Congested Route:",
-                    route_name
-                )
-
-                continue
-
-
-            # Increment congestion
-            self.congestion[
-                route_name
-            ] += 1
-
-
-            # Route signal
-            destination_lut = fabric.luts[
-                destination_lut_name
             ]
 
 
-            destination_lut.inputs[
-                destination_index
-            ] = signal
+            packet = {
+
+                "source": source.replace(
+                    "_OUT",
+                    ""
+                ),
+
+                "destination": destination_lut,
+
+                "signal": signal,
+
+                "progress": 0.0,
+
+                "delay": delay,
+
+                "start_cycle": current_cycle,
+
+                "arrival_cycle": (
+                    current_cycle +
+                    delay
+                )
+            }
+
+
+            self.signal_queue.append(
+                packet
+            )
 
 
             print(
-                "Signal Arrived:",
-                route_name
+                "Injected Packet:",
+                route_name,
+                "| Delay =",
+                delay
             )
 
 
-            active_paths.append(
-                route_name
+       # -------------------------
+    # ADVANCE SIGNALS
+    # -------------------------
+    def advance_signals(
+        self,
+        fabric,
+        switchbox,
+        current_cycle
+    ):
+
+        delivered_packets = []
+
+
+        for packet in self.signal_queue:
+
+            delay = packet["delay"]
+
+
+            # -------------------------
+            # SAFE PROGRESS UPDATE
+            # -------------------------
+            packet["progress"] += (
+
+                1.0 / (delay * 5)
             )
 
 
-        return active_paths
+            # Clamp
+            if packet["progress"] > 1.0:
+
+                packet["progress"] = 1.0
+
+
+            if (
+                current_cycle >=
+                packet["arrival_cycle"]
+            ):
+
+                source = packet["source"]
+
+                destination = packet[
+                    "destination"
+                ]
+
+
+                route_name = (
+                    source +
+                    "->" +
+                    destination
+                )
+
+
+                switch_name = (
+                    source +
+                    "_OUT->" +
+                    destination
+                )
+
+
+                if switchbox.is_enabled(
+                    switch_name
+                ):
+
+                    self.congestion[
+                        route_name
+                    ] += 1
+
+
+                    destination_lut = fabric.luts[
+                        destination
+                    ]
+
+
+                    destination_lut.inputs[
+                        0
+                    ] = packet["signal"]
+
+
+                    print(
+                        "Signal Arrived:",
+                        route_name,
+                        "| Arrival Cycle =",
+                        current_cycle
+                    )
+
+
+                delivered_packets.append(
+                    packet
+                )
+
+
+        for packet in delivered_packets:
+
+            if packet in self.signal_queue:
+
+                self.signal_queue.remove(
+                    packet
+                )
+
+
+    # -------------------------
+    # SHOW TIMING
+    # -------------------------
+    def show_timing_report(self):
+
+        print(
+            "\nFPGA Timing Report:\n"
+        )
+
+
+        for route, delay in self.route_delays.items():
+
+            print(
+                route,
+                "->",
+                delay,
+                "cycle delay"
+            )
 
 
     # -------------------------
@@ -276,7 +361,9 @@ class Routing:
 
         for route in self.congestion:
 
-            self.congestion[route] = 0
+            self.congestion[
+                route
+            ] = 0
 
 
     # -------------------------

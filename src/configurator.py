@@ -113,3 +113,76 @@ class Configurator:
             config_data = json.load(file)
 
         return config_data
+    
+        # -------------------------
+    # PARSE HDL
+    # -------------------------
+    def parse_hdl(
+        self,
+        hdl_lines
+    ):
+
+        parsed_nodes = []
+
+
+        for line in hdl_lines:
+
+            line = line.strip()
+
+
+            if "=" not in line:
+
+                continue
+
+
+            left_side, right_side = line.split("=")
+
+            lut_name = left_side.strip()
+
+
+            logic_part = right_side.strip()
+
+
+            logic_type = logic_part.split("(")[0]
+
+
+            input_part = logic_part.split("(")[1]
+
+            input_part = input_part.replace(
+                ")",
+                ""
+            )
+
+
+            inputs = [
+
+                item.strip()
+
+                for item in input_part.split(",")
+            ]
+
+
+            parsed_nodes.append({
+
+                "lut": lut_name,
+
+                "logic": logic_type,
+
+                "inputs": inputs
+            })
+
+
+        return parsed_nodes
+
+
+    # -------------------------
+    # GENERATE LUT MEMORY
+    # -------------------------
+    def logic_to_memory(
+        self,
+        logic_type
+    ):
+
+        return self.generate_memory(
+            logic_type
+        )

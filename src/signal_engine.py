@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import time
-import numpy as np
 
 
 class SignalEngine:
@@ -10,8 +9,6 @@ class SignalEngine:
         visual_mode="3D"
     ):
 
-        self.signal_queue = []
-
         self.visual_mode = visual_mode
 
         self.fig, self.ax = plt.subplots()
@@ -19,52 +16,26 @@ class SignalEngine:
         plt.ion()
 
 
+    # -------------------------
+    # CLEAR CANVAS
+    # -------------------------
     def clear_canvas(self):
 
         self.ax.clear()
 
         self.ax.set_title(
-            "Advanced FPGA Architecture"
+            "FPGA Timing-Aware Routing"
         )
 
         self.ax.axis("off")
 
 
-    # -------------------------
-    # ROUTE COLOR BY CONGESTION
-    # -------------------------
-    def get_route_color(
-        self,
-        usage,
-        max_capacity,
-        active=False,
-        blocked=False
-    ):
+        # -------------------------
+        # LOCK VIEWPORT
+        # -------------------------
+        self.ax.set_xlim(-1, 4)
 
-        if blocked:
-
-            return "red"
-
-
-        if active:
-
-            return "lime"
-
-
-        utilization = usage / max_capacity
-
-
-        if utilization < 0.33:
-
-            return "gray"
-
-        elif utilization < 0.66:
-
-            return "orange"
-
-        else:
-
-            return "magenta"
+        self.ax.set_ylim(-7, 1)
 
 
     # -------------------------
@@ -76,8 +47,7 @@ class SignalEngine:
         routing,
         switchbox,
         lut_labels=None,
-        active_lut=None,
-        active_routes=None
+        active_lut=None
     ):
 
         self.clear_canvas()
@@ -93,90 +63,76 @@ class SignalEngine:
         ), lut_name in fabric.grid.items():
 
             x = column + (layer * 0.3)
+
             y = -row + (layer * 0.3)
 
 
-            # Active LUT
             if lut_name == active_lut:
 
-                lut_color = "yellow"
+                color = "yellow"
+
                 size = 4000
 
             else:
 
-                lut_color = "skyblue"
+                color = "skyblue"
+
                 size = 3000
 
 
-            # Shadow
-            self.ax.scatter(
-                x + 0.05,
-                y - 0.05,
-                s=size,
-                color="black",
-                alpha=0.25
-            )
-
-
-            # Main LUT
             self.ax.scatter(
                 x,
                 y,
                 s=size,
-                color=lut_color,
-                edgecolors="black"
+                color=color,
+                edgecolors="black",
+                zorder=3
             )
 
 
-            # Labels
             if (
                 lut_labels and
                 lut_name in lut_labels
             ):
 
-                display_text = (
+                text = (
+
                     lut_name +
                     "\n(" +
                     lut_labels[lut_name] +
-                    ")\nL" +
-                    str(layer)
+                    ")"
                 )
 
             else:
 
-                display_text = lut_name
+                text = lut_name
 
 
             self.ax.text(
                 x,
                 y,
-                display_text,
+                text,
                 ha='center',
                 va='center',
                 fontsize=8,
-                fontweight='bold'
+                fontweight='bold',
+                zorder=4
             )
 
 
         # -------------------------
         # DRAW ROUTES
         # -------------------------
-        for source, destinations in routing.routes.items():
+        for source, neighbors in routing.graph.items():
 
-            source_lut = source.replace(
-                "_OUT",
-                ""
-            )
+            for destination in neighbors:
 
-            source_position = fabric.get_position(
-                source_lut
-            )
-
-
-            for destination_lut, _ in destinations:
+                source_position = fabric.get_position(
+                    source
+                )
 
                 destination_position = fabric.get_position(
-                    destination_lut
+                    destination
                 )
 
 
@@ -191,72 +147,77 @@ class SignalEngine:
 
 
                     x1 = s_col + (s_layer * 0.3)
+
                     y1 = -s_row + (s_layer * 0.3)
 
                     x2 = d_col + (d_layer * 0.3)
+
                     y2 = -d_row + (d_layer * 0.3)
 
 
                     route_name = (
-                        source_lut +
+                        source +
                         "->" +
-                        destination_lut
+                        destination
                     )
 
 
-                    usage = routing.congestion[
+                    delay = routing.route_delays[
                         route_name
                     ]
 
 
-                    blocked = not switchbox.is_enabled(
-                        source +
-                        "->" +
-                        destination_lut
-                    )
+                    # -------------------------
+                    # DELAY COLOR
+                    # -------------------------
+                    if delay == 1:
+
+                        route_color = "lime"
+
+                    elif delay == 2:
+
+                        route_color = "orange"
+
+                    else:
+
+                        route_color = "red"
 
 
-                    active = (
-                        active_routes and
-                        (
-                            source +
-                            "->" +
-                            destination_lut
-                        ) in active_routes
-                    )
-
-
-                    route_color = self.get_route_color(
-                        usage,
-                        routing.max_capacity,
-                        active,
-                        blocked
-                    )
-
-
-                    line_width = 2 + usage
-
-
-                    # Route shadow
-                    self.ax.plot(
-                        [x1 + 0.03, x2 + 0.03],
-                        [y1 - 0.03, y2 - 0.03],
-                        color="black",
-                        alpha=0.2,
-                        linewidth=line_width + 1
-                    )
-
-
-                    # Main route
                     self.ax.plot(
                         [x1, x2],
                         [y1, y2],
                         color=route_color,
-                        linewidth=line_width
+                        linewidth=3,
+                        zorder=1
                     )
 
 
-                    # Via visualization
+                    # -------------------------
+                    # DELAY LABEL
+                    # -------------------------
+                    delay_x = (
+                        x1 + x2
+                    ) / 2
+
+                    delay_y = (
+                        y1 + y2
+                    ) / 2
+
+
+                    self.ax.text(
+                        delay_x,
+                        delay_y,
+                        str(delay),
+                        fontsize=10,
+                        fontweight='bold',
+                        color="black",
+                        zorder=5
+                    )
+
+
+                    # -------------------------
+                    # VIA
+                    # -------------------------
                     if s_layer != d_layer:
 
                         via_x = (
@@ -271,69 +232,60 @@ class SignalEngine:
                         self.ax.scatter(
                             via_x,
                             via_y,
-                            s=500,
-                            color="orange",
-                            edgecolors="black"
+                            s=250,
+                            color="purple",
+                            edgecolors="black",
+                            zorder=2
                         )
 
 
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
+        # -------------------------
+        # DRAW SIGNAL PACKETS
+        # -------------------------
+        for packet in routing.signal_queue:
+
+            source_position = fabric.get_position(
+                packet["source"]
+            )
+
+            destination_position = fabric.get_position(
+                packet["destination"]
+            )
 
 
-    # -------------------------
-    # ANIMATE SIGNAL
-    # -------------------------
-    def animate_signal(
-        self,
-        fabric,
-        routing,
-        switchbox,
-        source_lut,
-        destination_lut,
-        lut_labels=None
-    ):
+            if (
+                not source_position or
+                not destination_position
+            ):
 
-        source_position = fabric.get_position(
-            source_lut
-        )
-
-        destination_position = fabric.get_position(
-            destination_lut
-        )
+                continue
 
 
-        s_layer, s_row, s_col = source_position
+            s_layer, s_row, s_col = source_position
 
-        d_layer, d_row, d_col = destination_position
-
-
-        x1 = s_col + (s_layer * 0.3)
-        y1 = -s_row + (s_layer * 0.3)
-
-        x2 = d_col + (d_layer * 0.3)
-        y2 = -d_row + (d_layer * 0.3)
+            d_layer, d_row, d_col = destination_position
 
 
-        steps = 50
+            x1 = s_col + (s_layer * 0.3)
+
+            y1 = -s_row + (s_layer * 0.3)
+
+            x2 = d_col + (d_layer * 0.3)
+
+            y2 = -d_row + (d_layer * 0.3)
 
 
-        for t in np.linspace(0, 1, steps):
-
-            self.draw_fpga(
-                fabric,
-                routing,
-                switchbox,
-                lut_labels,
-                active_routes=[
-                    source_lut +
-                    "_OUT->" +
-                    destination_lut
-                ]
+            # -------------------------
+            # CLAMP PROGRESS
+            # -------------------------
+            t = min(
+                packet["progress"],
+                1.0
             )
 
 
             signal_x = x1 + (x2 - x1) * t
+
             signal_y = y1 + (y2 - y1) * t
 
 
@@ -342,14 +294,14 @@ class SignalEngine:
                 signal_y,
                 s=300,
                 color="lime",
-                edgecolors="black"
+                edgecolors="black",
+                zorder=6
             )
 
 
-            self.fig.canvas.draw()
-            self.fig.canvas.flush_events()
+        self.fig.canvas.draw()
 
-            plt.pause(0.02)
+        self.fig.canvas.flush_events()
 
 
     # -------------------------
@@ -383,7 +335,7 @@ class SignalEngine:
                 active_lut=active_lut
             )
 
-            plt.pause(0.08)
+            plt.pause(0.05)
 
 
     # -------------------------
